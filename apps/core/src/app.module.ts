@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { AppResolver } from './app.resolver';
 
 @Module({
 	imports: [
@@ -21,6 +22,6 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 		}),
 	],
 	controllers: [],
-	providers: [],
+	providers: [AppResolver],
 })
 export class AppModule {}
