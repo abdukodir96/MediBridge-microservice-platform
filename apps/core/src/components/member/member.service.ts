@@ -32,11 +32,12 @@ export class MemberService {
 			result.accessToken = await this.authService.createToken(result);
 			return result;
 		} catch (err) {
-			console.log('Error, signup:', err.message);
-			if (err.code === 11000) {
-				throw new BadRequestException('Bu email allaqachon mavjud');
+			const error = err as { message?: string; code?: number };
+			console.log('Error, signup:', error.message);
+			if (error.code === 11000) {
+				throw new BadRequestException('This email is already registered');
 			}
-			throw new InternalServerErrorException('Signup xatosi');
+			throw new InternalServerErrorException('Signup failed');
 		}
 	}
 
@@ -51,20 +52,25 @@ export class MemberService {
 			)
 			.exec();
 
+		// Same generic message for "no such user" and "wrong password" —
+		// distinguishing them lets an attacker enumerate registered emails.
+		const invalidCredentials = () =>
+			new BadRequestException('Invalid email or password');
+
 		if (!member) {
-			throw new NotFoundException('Bunday foydalanuvchi topilmadi');
+			throw invalidCredentials();
 		}
 		if (member.memberStatus === MemberStatus.BLOCKED) {
-			throw new BadRequestException('Hisob bloklangan');
+			throw new BadRequestException('This account has been blocked');
 		}
 		if (member.memberStatus === MemberStatus.DELETED) {
-			throw new BadRequestException('Hisob o\'chirilgan');
+			throw invalidCredentials();
 		}
 
 		// 2. Verify the password
 		const isMatch = await comparePassword(memberPassword, member.memberPassword);
 		if (!isMatch) {
-			throw new BadRequestException('Parol noto\'g\'ri');
+			throw invalidCredentials();
 		}
 
 		// 3. Create the token
@@ -74,7 +80,7 @@ export class MemberService {
 
 	public async getMember(memberId: ObjectId): Promise<Member> {
 		const member = await this.memberModel.findById(memberId).exec();
-		if (!member) throw new NotFoundException('Foydalanuvchi topilmadi');
+		if (!member) throw new NotFoundException('Member not found');
 		return member;
 	}
 }

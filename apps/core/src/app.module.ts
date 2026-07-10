@@ -18,6 +18,7 @@ import { MemberModule } from './components/member/member.module';
 		GraphQLModule.forRoot<ApolloDriverConfig>({
 			driver: ApolloDriver,
 			playground: process.env.NODE_ENV !== 'production', // enabled only in dev
+			introspection: process.env.NODE_ENV !== 'production', // schema is hidden in prod
 			autoSchemaFile: true, // schema is generated automatically (code-first)
 			context: ({ req }) => ({ req }), // needed for auth guard
 		}),

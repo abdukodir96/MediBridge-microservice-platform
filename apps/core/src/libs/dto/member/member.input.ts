@@ -6,7 +6,7 @@ import {
 	IsEmail,
 	IsEnum,
 } from 'class-validator';
-import { MemberType, MemberCountry, MemberLang } from '../../enums/member.enum';
+import { MemberCountry, MemberLang } from '../../enums/member.enum';
 
 @InputType()
 export class MemberInput {
@@ -28,11 +28,6 @@ export class MemberInput {
 	@IsNotEmpty()
 	@Field(() => String)
 	memberPhone: string;
-
-	@IsOptional()
-	@IsEnum(MemberType)
-	@Field(() => MemberType, { nullable: true })
-	memberType?: MemberType;
 
 	@IsOptional()
 	@IsEnum(MemberCountry)
