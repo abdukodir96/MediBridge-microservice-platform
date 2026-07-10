@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# env
+.env
+**/.env
+*.env.local
+
+# build
+dist/
+build/
+.next/
+
+# python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
