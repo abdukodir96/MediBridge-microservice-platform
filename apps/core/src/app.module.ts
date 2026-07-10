@@ -4,22 +4,24 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { AppResolver } from './app.resolver';
+import { MemberModule } from './components/member/member.module';
 
 @Module({
 	imports: [
-		// .env fayllarni o'qish (butun app bo'ylab)
+		// Load .env files (available across the whole app)
 		ConfigModule.forRoot({ isGlobal: true }),
 
-		// MongoDB ulash (.env dagi MONGO_URI orqali)
+		// Connect to MongoDB (via MONGO_URI from .env)
 		MongooseModule.forRoot(process.env.MONGO_URI as string),
 
-		// GraphQL sozlash
+		// GraphQL setup
 		GraphQLModule.forRoot<ApolloDriverConfig>({
 			driver: ApolloDriver,
-			playground: true, // brauzerda test qilish uchun
-			autoSchemaFile: true, // schema avtomatik yaratiladi (code-first)
-			context: ({ req }) => ({ req }), // auth guard uchun kerak
+			playground: process.env.NODE_ENV !== 'production', // enabled only in dev
+			autoSchemaFile: true, // schema is generated automatically (code-first)
+			context: ({ req }) => ({ req }), // needed for auth guard
 		}),
+		MemberModule,
 	],
 	controllers: [],
 	providers: [AppResolver],
