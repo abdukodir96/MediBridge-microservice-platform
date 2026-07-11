@@ -5,6 +5,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { AppResolver } from './app.resolver';
 import { MemberModule } from './components/member/member.module';
+import { ClinicModule } from './components/clinic/clinic.module';
 
 @Module({
 	imports: [
@@ -23,6 +24,7 @@ import { MemberModule } from './components/member/member.module';
 			context: ({ req }) => ({ req }), // needed for auth guard
 		}),
 		MemberModule,
+		ClinicModule,
 	],
 	controllers: [],
 	providers: [AppResolver],
