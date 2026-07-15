@@ -60,6 +60,36 @@ export class BookingResolver {
 		);
 	}
 
+	// PATIENT — pays a confirmed booking
+	@Roles(MemberType.PATIENT)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Booking)
+	public async payBooking(
+		@Args('bookingId') bookingId: string,
+		@AuthMember('_id') patientId: ObjectId,
+	): Promise<Booking> {
+		console.log('Mutation: payBooking');
+		return await this.bookingService.payBooking(
+			patientId,
+			bookingId as unknown as ObjectId,
+		);
+	}
+
+	// CLINIC — marks a paid booking as done
+	@Roles(MemberType.CLINIC)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Booking)
+	public async completeBooking(
+		@Args('bookingId') bookingId: string,
+		@AuthMember('_id') ownerId: ObjectId,
+	): Promise<Booking> {
+		console.log('Mutation: completeBooking');
+		return await this.bookingService.completeBooking(
+			ownerId,
+			bookingId as unknown as ObjectId,
+		);
+	}
+
 	// PATIENT — views their own bookings
 	@Roles(MemberType.PATIENT)
 	@UseGuards(RolesGuard)

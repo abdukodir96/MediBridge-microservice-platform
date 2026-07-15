@@ -35,13 +35,25 @@ const BookingSchema = new Schema(
 			type: String,
 			default: '',
 		},
-		// Cross-service references (filled in later by the Payment service)
+		// Snapshotted at CONFIRM time from the procedure's price, so a later
+		// price change at the clinic can't change what the patient owes
+		bookingAmount: {
+			type: Number,
+			default: null,
+		},
+		bookingCurrency: {
+			type: String,
+			default: null,
+		},
+		// Cross-service references, filled in later by the Payment service.
+		// Payment/Contract live in Postgres and use UUID primary keys, not
+		// Mongo ObjectIds — String, not Schema.Types.ObjectId.
 		bookingPaymentId: {
-			type: Schema.Types.ObjectId,
+			type: String,
 			default: null,
 		},
 		bookingContractId: {
-			type: Schema.Types.ObjectId,
+			type: String,
 			default: null,
 		},
 	},

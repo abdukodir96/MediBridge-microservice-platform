@@ -1,4 +1,4 @@
-import { Field, ObjectType, Int } from '@nestjs/graphql';
+import { Field, ObjectType, Int, Float } from '@nestjs/graphql';
 import type { ObjectId } from 'mongoose';
 import { BookingStatus } from '../../enums/booking.enum';
 
@@ -28,11 +28,19 @@ export class Booking {
 	@Field(() => String)
 	bookingNote: string;
 
-	@Field(() => String, { nullable: true })
-	bookingPaymentId?: ObjectId;
+	@Field(() => Float, { nullable: true })
+	bookingAmount?: number;
 
 	@Field(() => String, { nullable: true })
-	bookingContractId?: ObjectId;
+	bookingCurrency?: string;
+
+	// Cross-service refs into Postgres (Payment/Contract) — UUID strings,
+	// not Mongo ObjectIds
+	@Field(() => String, { nullable: true })
+	bookingPaymentId?: string;
+
+	@Field(() => String, { nullable: true })
+	bookingContractId?: string;
 
 	@Field(() => Date)
 	createdAt: Date;

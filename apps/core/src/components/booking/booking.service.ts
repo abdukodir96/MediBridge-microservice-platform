@@ -1,10 +1,13 @@
 import {
 	Injectable,
+	Inject,
 	BadRequestException,
 	NotFoundException,
 	ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
 import { Model, ObjectId, isValidObjectId } from 'mongoose';
 import { Booking, Bookings } from '../../libs/dto/booking/booking';
 import {
@@ -31,6 +34,7 @@ export class BookingService {
 		@InjectModel('Booking') private readonly bookingModel: Model<Booking>,
 		@InjectModel('Clinic') private readonly clinicModel: Model<Clinic>,
 		@InjectModel('Procedure') private readonly procedureModel: Model<Procedure>,
+		@Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
 	) {}
 
 	// PATIENT — creates a new booking (REQUESTED)
@@ -106,13 +110,25 @@ export class BookingService {
 			throw new ForbiddenException('This booking does not belong to your clinic');
 		}
 
+		// Snapshot the price now, at confirmation time — if the clinic edits
+		// the procedure's price later, it must not change what was agreed.
+		const procedure = await this.procedureModel
+			.findById(booking.bookingProcedureId)
+			.exec();
+		if (!procedure) throw new NotFoundException('Procedure not found');
+
 		// STATE MACHINE: the status check happens in the same atomic update as
 		// the write, so two concurrent requests can't both see REQUESTED and
 		// both succeed (findById + save would race here).
 		const result = await this.bookingModel
 			.findOneAndUpdate(
 				{ _id: bookingId, bookingStatus: BookingStatus.REQUESTED },
-				{ bookingStatus: BookingStatus.CONFIRMED, bookingConfirmedDate: new Date() },
+				{
+					bookingStatus: BookingStatus.CONFIRMED,
+					bookingConfirmedDate: new Date(),
+					bookingAmount: procedure.procedurePriceMin,
+					bookingCurrency: procedure.procedureCurrency,
+				},
 				{ new: true },
 			)
 			.exec();
@@ -169,6 +185,133 @@ export class BookingService {
 			);
 		}
 		return result;
+	}
+
+	// PATIENT — pays a confirmed booking (CONFIRMED → PAID)
+	public async payBooking(
+		patientId: ObjectId,
+		bookingId: ObjectId,
+	): Promise<Booking> {
+		assertValidObjectId(bookingId, 'booking');
+		const booking = await this.bookingModel.findById(bookingId).exec();
+		if (!booking) throw new NotFoundException('Booking not found');
+
+		// OWNERSHIP: only the booking's own patient can pay it
+		if (String(booking.bookingPatientId) !== String(patientId)) {
+			throw new ForbiddenException('This is not your booking');
+		}
+
+		// IDEMPOTENT REPLAY: already paid — treat as success, not an error
+		if (
+			booking.bookingStatus === BookingStatus.PAID &&
+			booking.bookingPaymentId
+		) {
+			return booking;
+		}
+
+		// STATE MACHINE: only a CONFIRMED booking can be paid
+		if (booking.bookingStatus !== BookingStatus.CONFIRMED) {
+			throw new BadRequestException(
+				`Cannot pay a booking with status ${booking.bookingStatus}`,
+			);
+		}
+
+		// The price is only ever set by confirmBooking's snapshot
+		if (booking.bookingAmount == null) {
+			throw new BadRequestException('Booking has no confirmed amount');
+		}
+
+		// TCP → Payment service (bounded wait so an unreachable service fails
+		// fast and clearly, instead of hanging the mutation indefinitely)
+		let payment: { id: string };
+		try {
+			payment = await firstValueFrom(
+				this.paymentClient
+					.send<{ id: string }>(
+						{ cmd: 'payment.create' },
+						{
+							bookingId: String(booking._id),
+							patientId: String(booking.bookingPatientId),
+							clinicId: String(booking.bookingClinicId),
+							amount: booking.bookingAmount,
+							currency: booking.bookingCurrency ?? 'USD',
+							// Deterministic, booking-scoped key — a retry of this
+							// same booking always reuses the same key, so the
+							// Payment service's idempotency check actually protects
+							// against double-charging on retry.
+							idempotencyKey: `booking-${String(booking._id)}`,
+						},
+					)
+					.pipe(timeout(5000)),
+			);
+		} catch (err) {
+			const error = err as { message?: string };
+			console.log('Error, payBooking → payment.create:', error.message);
+			throw new BadRequestException(
+				'Payment service unavailable, please try again',
+			);
+		}
+
+		// ATOMIC + IDEMPOTENT: CONFIRMED → PAID, same race-safety pattern as
+		// confirmBooking/cancelBooking.
+		const updated = await this.bookingModel
+			.findOneAndUpdate(
+				{ _id: bookingId, bookingStatus: BookingStatus.CONFIRMED },
+				{
+					bookingStatus: BookingStatus.PAID,
+					bookingPaymentId: payment.id,
+				},
+				{ new: true },
+			)
+			.exec();
+
+		if (!updated) {
+			// Lost the race — a concurrent/retried call may have already paid
+			// this exact booking with this exact payment. If so, that's a
+			// successful idempotent replay, not a failure.
+			const current = await this.bookingModel.findById(bookingId).exec();
+			if (
+				current &&
+				current.bookingStatus === BookingStatus.PAID &&
+				String(current.bookingPaymentId) === String(payment.id)
+			) {
+				return current;
+			}
+			throw new BadRequestException('Booking is no longer payable');
+		}
+
+		return updated;
+	}
+
+	// CLINIC — marks a paid booking as done (PAID → COMPLETED)
+	public async completeBooking(
+		ownerId: ObjectId,
+		bookingId: ObjectId,
+	): Promise<Booking> {
+		assertValidObjectId(bookingId, 'booking');
+		const booking = await this.bookingModel.findById(bookingId).exec();
+		if (!booking) throw new NotFoundException('Booking not found');
+
+		// OWNERSHIP: does this booking's clinic belong to the caller?
+		const clinic = await this.clinicModel
+			.findOne({ _id: booking.bookingClinicId, clinicOwnerId: ownerId })
+			.exec();
+		if (!clinic) {
+			throw new ForbiddenException('This booking does not belong to your clinic');
+		}
+
+		const updated = await this.bookingModel
+			.findOneAndUpdate(
+				{ _id: bookingId, bookingStatus: BookingStatus.PAID },
+				{ bookingStatus: BookingStatus.COMPLETED },
+				{ new: true },
+			)
+			.exec();
+		if (!updated) {
+			throw new BadRequestException('Booking is not in a completable state');
+		}
+
+		return updated;
 	}
 
 	// PATIENT — views their own bookings
