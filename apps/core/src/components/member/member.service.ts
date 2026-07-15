@@ -35,8 +35,15 @@ export class MemberService {
 			// The schema's pre('save') hook hashes memberPassword automatically
 			const result = await this.memberModel.create(input);
 
-			result.accessToken = await this.authService.createToken(result);
-			return result;
+			const accessToken = await this.authService.createToken(result);
+
+			// accessToken isn't a schema field, so setting it on the live
+			// Mongoose document only survives in-process (GraphQL resolvers
+			// read the object directly). Over TCP the response is
+			// JSON-serialized via the document's toJSON(), which only
+			// includes schema paths and would silently drop it — return a
+			// plain object instead so it works over both transports.
+			return { ...result.toObject(), accessToken } as Member;
 		} catch (err) {
 			const error = err as { message?: string; code?: number };
 			console.log('Error, signup:', error.message);
@@ -50,12 +57,14 @@ export class MemberService {
 	public async login(input: LoginInput): Promise<Member> {
 		const { memberEmail, memberPassword } = input;
 
-		// 1. Find by email — also fetch the password
+		// 1. Find by email — the schema excludes memberPassword by default
+		// (select: false), so it has to be re-included explicitly. Using an
+		// inclusion projection here (as before) would drop every other field
+		// (memberEmail, memberPhone, timestamps, ...) that Member's GraphQL
+		// type declares as non-nullable, breaking any query that asks for them.
 		const member = await this.memberModel
-			.findOne(
-				{ memberEmail: memberEmail },
-				{ memberPassword: 1, memberStatus: 1, memberType: 1, memberNick: 1 },
-			)
+			.findOne({ memberEmail: memberEmail })
+			.select('+memberPassword')
 			.exec();
 
 		// Same generic message for "no such user" and "wrong password" —
@@ -79,9 +88,9 @@ export class MemberService {
 			throw invalidCredentials();
 		}
 
-		// 3. Create the token
-		member.accessToken = await this.authService.createToken(member);
-		return member;
+		// 3. Create the token — same toObject() + spread reasoning as signup()
+		const accessToken = await this.authService.createToken(member);
+		return { ...member.toObject(), accessToken } as Member;
 	}
 
 	public async getMember(memberId: ObjectId): Promise<Member> {
