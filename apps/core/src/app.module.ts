@@ -9,6 +9,7 @@ import { AppResolver } from './app.resolver';
 import { MemberModule } from './components/member/member.module';
 import { ClinicModule } from './components/clinic/clinic.module';
 import { ProcedureModule } from './components/procedure/procedure.module';
+import { BookingModule } from './components/booking/booking.module';
 import { GqlThrottlerGuard } from './libs/auth/guards/gql-throttler.guard';
 
 @Module({
@@ -39,6 +40,7 @@ import { GqlThrottlerGuard } from './libs/auth/guards/gql-throttler.guard';
 		MemberModule,
 		ClinicModule,
 		ProcedureModule,
+		BookingModule,
 	],
 	controllers: [],
 	providers: [
