@@ -5,8 +5,14 @@ import {
 	Length,
 	IsEmail,
 	IsEnum,
+	IsIn,
 } from 'class-validator';
-import { MemberCountry, MemberLang } from '../../enums/member.enum';
+import { MemberCountry, MemberLang, MemberType } from '../../enums/member.enum';
+
+// Self-service signup may only ever produce a PATIENT or a CLINIC account —
+// ADMIN is deliberately excluded here and can only be created by the seed
+// script, directly against the database.
+const SIGNUP_MEMBER_TYPES = [MemberType.PATIENT, MemberType.CLINIC];
 
 @InputType()
 export class MemberInput {
@@ -28,6 +34,11 @@ export class MemberInput {
 	@IsNotEmpty()
 	@Field(() => String)
 	memberPhone: string;
+
+	@IsOptional()
+	@IsIn(SIGNUP_MEMBER_TYPES)
+	@Field(() => MemberType, { nullable: true, defaultValue: MemberType.PATIENT })
+	memberType?: MemberType;
 
 	@IsOptional()
 	@IsEnum(MemberCountry)

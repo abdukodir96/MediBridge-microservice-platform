@@ -8,7 +8,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Member } from '../../libs/dto/member/member';
 import { MemberInput, LoginInput } from '../../libs/dto/member/member.input';
-import { MemberStatus } from '../../libs/enums/member.enum';
+import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { AuthService } from '../auth/auth.service';
 import { comparePassword } from '../../libs/config';
 
@@ -25,6 +25,12 @@ export class MemberService {
 	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
+		// Defense in depth: ADMIN must never be reachable through signup, even
+		// if the DTO's @IsIn allowlist were ever loosened by mistake later on.
+		if (input.memberType === MemberType.ADMIN) {
+			throw new BadRequestException('Cannot self-register as ADMIN');
+		}
+
 		try {
 			// The schema's pre('save') hook hashes memberPassword automatically
 			const result = await this.memberModel.create(input);
