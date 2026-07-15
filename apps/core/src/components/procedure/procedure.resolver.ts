@@ -3,7 +3,10 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { ObjectId } from 'mongoose';
 import { ProcedureService } from './procedure.service';
 import { Procedure, Procedures } from '../../libs/dto/procedure/procedure';
-import { ProcedureInput } from '../../libs/dto/procedure/procedure.input';
+import {
+	ProcedureInput,
+	ProceduresInquiry,
+} from '../../libs/dto/procedure/procedure.input';
 import { RolesGuard } from '../../libs/auth/guards/roles.guard';
 import { Roles } from '../../libs/auth/decorators/roles.decorator';
 import { AuthMember } from '../../libs/auth/decorators/auth-member.decorator';
@@ -23,6 +26,15 @@ export class ProcedureResolver {
 	): Promise<Procedure> {
 		console.log('Mutation: createProcedure');
 		return await this.procedureService.createProcedure(ownerId, input);
+	}
+
+	// Anyone — searches procedures across all clinics (filter + pagination)
+	@Query(() => Procedures)
+	public async getProcedures(
+		@Args('input') input: ProceduresInquiry,
+	): Promise<Procedures> {
+		console.log('Query: getProcedures');
+		return await this.procedureService.getProcedures(input);
 	}
 
 	// Anyone — lists a clinic's procedures

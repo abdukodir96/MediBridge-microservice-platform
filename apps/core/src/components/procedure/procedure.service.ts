@@ -7,8 +7,19 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId, isValidObjectId } from 'mongoose';
 import { Procedure, Procedures } from '../../libs/dto/procedure/procedure';
-import { ProcedureInput } from '../../libs/dto/procedure/procedure.input';
+import {
+	ProcedureInput,
+	ProceduresInquiry,
+} from '../../libs/dto/procedure/procedure.input';
 import { Clinic } from '../../libs/dto/clinic/clinic';
+import { ClinicStatus } from '../../libs/enums/clinic.enum';
+import { ProcedureSort } from '../../libs/enums/procedure.enum';
+
+const SORT_MAP: Record<ProcedureSort, Record<string, 1 | -1>> = {
+	[ProcedureSort.PRICE_LOW]: { procedurePriceMin: 1 },
+	[ProcedureSort.PRICE_HIGH]: { procedurePriceMin: -1 },
+	[ProcedureSort.NEWEST]: { createdAt: -1 },
+};
 
 const assertValidObjectId = (id: ObjectId | string): void => {
 	if (!isValidObjectId(id)) {
@@ -23,6 +34,11 @@ const assertPriceRange = (min?: number, max?: number): void => {
 		);
 	}
 };
+
+// Escapes regex special characters so user search input is matched literally,
+// not interpreted as a regex pattern (prevents ReDoS / regex injection)
+const escapeRegex = (text: string): string =>
+	text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 @Injectable()
 export class ProcedureService {
@@ -63,9 +79,15 @@ export class ProcedureService {
 		}
 	}
 
-	// Anyone — lists procedures of a given clinic
+	// Anyone — lists procedures of a given clinic (VERIFIED clinics only,
+	// same visibility rule as getClinic/getClinics)
 	public async getProceduresByClinic(clinicId: ObjectId): Promise<Procedures> {
 		assertValidObjectId(clinicId);
+		const clinic = await this.clinicModel
+			.findOne({ _id: clinicId, clinicStatus: ClinicStatus.VERIFIED })
+			.exec();
+		if (!clinic) throw new NotFoundException('Clinic not found');
+
 		const [list, total] = await Promise.all([
 			this.procedureModel
 				.find({ procedureClinicId: clinicId })
@@ -77,11 +99,73 @@ export class ProcedureService {
 		return { list, total };
 	}
 
-	// Anyone — views a single procedure
+	// Anyone — searches procedures across all clinics (filter + pagination,
+	// only surfaces procedures belonging to VERIFIED clinics)
+	public async getProcedures(input: ProceduresInquiry): Promise<Procedures> {
+		const {
+			categories,
+			priceMin,
+			priceMax,
+			text,
+			sort = ProcedureSort.NEWEST,
+			page = 1,
+			limit = 10,
+		} = input;
+
+		const match: any = {};
+		if (categories?.length) match.procedureCategory = { $in: categories };
+		// Overlap with the requested [priceMin, priceMax] window
+		if (priceMin != null) match.procedurePriceMax = { $gte: priceMin };
+		if (priceMax != null) match.procedurePriceMin = { $lte: priceMax };
+		if (text) match.procedureName = { $regex: escapeRegex(text), $options: 'i' };
+
+		const skip = (page - 1) * limit;
+
+		const pipeline: any[] = [
+			{ $match: match },
+			{
+				$lookup: {
+					from: this.clinicModel.collection.name,
+					localField: 'procedureClinicId',
+					foreignField: '_id',
+					as: 'clinic',
+				},
+			},
+			{ $unwind: '$clinic' },
+			{ $match: { 'clinic.clinicStatus': ClinicStatus.VERIFIED } },
+		];
+
+		const [list, countResult] = await Promise.all([
+			this.procedureModel
+				.aggregate([
+					...pipeline,
+					{ $sort: SORT_MAP[sort] },
+					{ $skip: skip },
+					{ $limit: limit },
+					{ $unset: 'clinic' },
+				])
+				.exec(),
+			this.procedureModel.aggregate([...pipeline, { $count: 'total' }]).exec(),
+		]);
+
+		return { list, total: countResult[0]?.total ?? 0 };
+	}
+
+	// Anyone — views a single procedure (VERIFIED clinics only, same
+	// visibility rule as getClinic/getClinics)
 	public async getProcedure(procedureId: ObjectId): Promise<Procedure> {
 		assertValidObjectId(procedureId);
 		const procedure = await this.procedureModel.findById(procedureId).exec();
 		if (!procedure) throw new NotFoundException('Procedure not found');
+
+		const clinic = await this.clinicModel
+			.findOne({
+				_id: procedure.procedureClinicId,
+				clinicStatus: ClinicStatus.VERIFIED,
+			})
+			.exec();
+		if (!clinic) throw new NotFoundException('Procedure not found');
+
 		return procedure;
 	}
 
@@ -92,10 +176,17 @@ export class ProcedureService {
 		input: Partial<ProcedureInput>,
 	): Promise<Procedure> {
 		assertValidObjectId(procedureId);
-		assertPriceRange(input.procedurePriceMin, input.procedurePriceMax);
 
 		const procedure = await this.procedureModel.findById(procedureId).exec();
 		if (!procedure) throw new NotFoundException('Procedure not found');
+
+		// A partial update may only touch one of the two price fields — check
+		// the resulting range (new value, or existing value if untouched) so a
+		// one-field update can't leave priceMin > priceMax in the database.
+		assertPriceRange(
+			input.procedurePriceMin ?? procedure.procedurePriceMin,
+			input.procedurePriceMax ?? procedure.procedurePriceMax,
+		);
 
 		// OWNERSHIP: does the procedure's clinic belong to the caller?
 		const clinic = await this.clinicModel
