@@ -10,6 +10,7 @@ import { MemberModule } from './components/member/member.module';
 import { ClinicModule } from './components/clinic/clinic.module';
 import { ProcedureModule } from './components/procedure/procedure.module';
 import { BookingModule } from './components/booking/booking.module';
+import { ReviewModule } from './components/review/review.module';
 import { GqlThrottlerGuard } from './libs/auth/guards/gql-throttler.guard';
 
 @Module({
@@ -41,6 +42,7 @@ import { GqlThrottlerGuard } from './libs/auth/guards/gql-throttler.guard';
 		ClinicModule,
 		ProcedureModule,
 		BookingModule,
+		ReviewModule,
 	],
 	controllers: [],
 	providers: [
