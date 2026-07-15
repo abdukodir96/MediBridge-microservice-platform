@@ -91,6 +91,13 @@ export class PaymentService {
 					where: { id: paymentId },
 				});
 				if (!payment) throw new NotFoundException('Payment not found');
+
+				// IDEMPOTENT REPLAY: already released — success, not an error.
+				// No new Transaction is written; the audit log keeps exactly
+				// one RELEASE entry.
+				if (payment.status === PaymentStatus.RELEASED) {
+					return payment;
+				}
 				throw new BadRequestException(
 					'Payment is not in a releasable state',
 				);
@@ -127,6 +134,11 @@ export class PaymentService {
 					where: { id: paymentId },
 				});
 				if (!payment) throw new NotFoundException('Payment not found');
+
+				// IDEMPOTENT REPLAY: already refunded — success, not an error.
+				if (payment.status === PaymentStatus.REFUNDED) {
+					return payment;
+				}
 				throw new BadRequestException(
 					'Payment is not in a refundable state',
 				);

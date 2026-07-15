@@ -90,6 +90,21 @@ export class BookingResolver {
 		);
 	}
 
+	// PATIENT — confirms satisfaction, releasing escrow to the clinic
+	@Roles(MemberType.PATIENT)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Booking)
+	public async confirmCompletion(
+		@Args('bookingId') bookingId: string,
+		@AuthMember('_id') patientId: ObjectId,
+	): Promise<Booking> {
+		console.log('Mutation: confirmCompletion');
+		return await this.bookingService.confirmCompletion(
+			patientId,
+			bookingId as unknown as ObjectId,
+		);
+	}
+
 	// PATIENT — views their own bookings
 	@Roles(MemberType.PATIENT)
 	@UseGuards(RolesGuard)

@@ -26,7 +26,11 @@ const assertValidObjectId = (id: ObjectId | string, label: string): void => {
 	}
 };
 
-const CANCELLABLE_STATUSES = [BookingStatus.REQUESTED, BookingStatus.CONFIRMED];
+const CANCELLABLE_STATUSES = [
+	BookingStatus.REQUESTED,
+	BookingStatus.CONFIRMED,
+	BookingStatus.PAID,
+];
 
 @Injectable()
 export class BookingService {
@@ -168,6 +172,36 @@ export class BookingService {
 			}
 		} else {
 			throw new ForbiddenException('Not allowed to cancel bookings');
+		}
+
+		// A PAID booking has money in escrow — refund it BEFORE flipping the
+		// booking to CANCELLED. If the refund succeeds but the update below
+		// fails, a retry re-cancels the same booking: refund is idempotent
+		// (already-REFUNDED replays as success), so the retry just needs to
+		// land the CANCELLED write. Doing it in the other order — CANCELLED
+		// first — would risk a cancelled booking whose money is stuck HELD,
+		// which leaves the patient out of pocket. We accept the failure mode
+		// that favors the patient.
+		if (
+			booking.bookingStatus === BookingStatus.PAID &&
+			booking.bookingPaymentId
+		) {
+			try {
+				await firstValueFrom(
+					this.paymentClient
+						.send(
+							{ cmd: 'payment.refund' },
+							{ paymentId: booking.bookingPaymentId },
+						)
+						.pipe(timeout(5000)),
+				);
+			} catch (err) {
+				const error = err as { message?: string };
+				console.log('Error, cancelBooking → payment.refund:', error.message);
+				throw new BadRequestException(
+					'Payment service unavailable, cancellation aborted — please try again',
+				);
+			}
 		}
 
 		// STATE MACHINE: atomic conditional update — same race-safety reasoning
@@ -312,6 +346,53 @@ export class BookingService {
 		}
 
 		return updated;
+	}
+
+	// PATIENT — confirms satisfaction with a completed procedure, releasing
+	// escrow to the clinic. Booking status stays COMPLETED — payment state
+	// belongs to the Payment service, not Core.
+	public async confirmCompletion(
+		patientId: ObjectId,
+		bookingId: ObjectId,
+	): Promise<Booking> {
+		assertValidObjectId(bookingId, 'booking');
+		const booking = await this.bookingModel.findById(bookingId).exec();
+		if (!booking) throw new NotFoundException('Booking not found');
+
+		// OWNERSHIP: only the booking's own patient can release the funds
+		if (String(booking.bookingPatientId) !== String(patientId)) {
+			throw new ForbiddenException('This is not your booking');
+		}
+
+		// STATE: only completed bookings can be confirmed
+		if (booking.bookingStatus !== BookingStatus.COMPLETED) {
+			throw new BadRequestException(
+				`Cannot confirm completion for a booking with status ${booking.bookingStatus}`,
+			);
+		}
+		if (!booking.bookingPaymentId) {
+			throw new BadRequestException('Booking has no payment to release');
+		}
+
+		// TCP → Payment: release (idempotent — a retry is safe)
+		try {
+			await firstValueFrom(
+				this.paymentClient
+					.send(
+						{ cmd: 'payment.release' },
+						{ paymentId: booking.bookingPaymentId },
+					)
+					.pipe(timeout(5000)),
+			);
+		} catch (err) {
+			const error = err as { message?: string };
+			console.log('Error, confirmCompletion → payment.release:', error.message);
+			throw new BadRequestException(
+				'Payment service unavailable, please try again',
+			);
+		}
+
+		return booking;
 	}
 
 	// PATIENT — views their own bookings
