@@ -14,7 +14,29 @@ international patients with verified Korean clinics.
 
 ## Getting started
 
-(coming soon)
+```bash
+cp .env.example .env   # fill in JWT_SECRET (any value is fine for local dev)
+docker compose up --build
+```
+
+This starts everything — MongoDB, PostgreSQL, and all four NestJS services
+(`core`, `gateway`, `payment`, `chat`) — with services able to reach each
+other by their Compose service name (e.g. `core`, `payment`) instead of
+`localhost`. No cloud accounts or manual DB setup needed.
+
+Once it's up:
+
+- Gateway GraphQL: http://localhost:3000/graphql
+- Core GraphQL (direct): http://localhost:3001/graphql
+- Payment: TCP-only (no public HTTP API), reachable from `core` on port 3004
+- Chat (Socket.io): ws://localhost:3005
+
+Databases start empty. To seed fixture accounts (a verified clinic + a
+patient) for manual testing:
+
+```bash
+docker compose exec core npx ts-node -r tsconfig-paths/register src/seed/seed-fixtures.ts
+```
 
 ## Known limitations / tech debt
 

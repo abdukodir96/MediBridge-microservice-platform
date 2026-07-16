@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@nestjs/config": "^4.0.4",
-    "@nestjs/microservices": "^11.1.28"
-  }
-}

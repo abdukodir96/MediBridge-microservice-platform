@@ -1,0 +1,79 @@
+services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: medibridge
+      POSTGRES_PASSWORD: medibridge
+      POSTGRES_DB: medibridge
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medibridge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  core:
+    build: ./apps/core
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      TCP_PORT: 3002
+      PAYMENT_TCP_HOST: payment
+      PAYMENT_TCP_PORT: 3004
+      MONGO_URI: mongodb://mongo:27017/medibridge
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "3001:3001"
+
+  gateway:
+    build: ./apps/gateway
+    depends_on:
+      - core
+    environment:
+      PORT: 3000
+      CORE_TCP_HOST: core
+      CORE_TCP_PORT: 3002
+    ports:
+      - "3000:3000"
+
+  payment:
+    build: ./apps/payment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://medibridge:medibridge@postgres:5432/medibridge?schema=public
+      PORT: 3003
+      TCP_PORT: 3004
+    command: sh -c "npx prisma migrate deploy && node dist/main"
+    ports:
+      - "3003:3003"
+
+  chat:
+    build: ./apps/chat
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      PORT: 3005
+      MONGO_URI: mongodb://mongo:27017/medibridge-chat
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "3005:3005"
+
+volumes:
+  mongo_data:
+  postgres_data:
