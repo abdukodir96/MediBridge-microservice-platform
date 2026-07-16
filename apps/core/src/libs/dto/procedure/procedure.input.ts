@@ -14,7 +14,7 @@ import {
 	ProcedureSort,
 } from '../../enums/procedure.enum';
 
-// Procedure yaratish
+// Create a procedure
 @InputType()
 export class ProcedureInput {
 	@IsNotEmpty()
@@ -55,7 +55,7 @@ export class ProcedureInput {
 	@Field(() => [String], { nullable: true })
 	procedureImages?: string[];
 
-	// Qaysi klinikaga qo'shilishini bildiradi
+	// Which clinic this procedure belongs to
 	@IsNotEmpty()
 	@Field(() => String)
 	procedureClinicId: string;

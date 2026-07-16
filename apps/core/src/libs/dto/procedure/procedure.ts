@@ -41,7 +41,7 @@ export class Procedure {
 	updatedAt: Date;
 }
 
-// Ro'yxat (klinika procedure'lari)
+// List (a clinic's procedures)
 @ObjectType()
 export class Procedures {
 	@Field(() => [Procedure])
