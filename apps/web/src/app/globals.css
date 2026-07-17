@@ -28,3 +28,11 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+[data-aos="fade-up"][data-aos="fade-up"] {
+  transform: translate3d(0, 28px, 0);
+}
+
+[data-aos="fade-up"][data-aos="fade-up"].aos-animate {
+  transform: translate3d(0, 0, 0);
+}

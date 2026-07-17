@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
+import "aos/dist/aos.css";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { PageTransition } from "@/components/page-transition";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -33,7 +35,9 @@ export default function RootLayout({
       className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <Providers>{children}</Providers>
+        <Providers>
+          <PageTransition>{children}</PageTransition>
+        </Providers>
       </body>
     </html>
   );

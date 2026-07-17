@@ -2,7 +2,8 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { LikeButton } from "@/components/like-button";
-import { ClinicSearchBar } from "@/components/clinic-search-bar";
+import { Pagination } from "@/components/pagination";
+import { ClinicsFilterPanel, ClinicsSort } from "@/components/clinics-filter-panel";
 
 const clinics = [
   {
@@ -65,107 +66,255 @@ const clinics = [
     price: "$2,900",
     gradient: "from-brand-teal-500 to-brand-teal-900",
   },
+  {
+    slug: "jk-plastic-surgery",
+    name: "JK Plastic Surgery",
+    location: "Gangnam-gu",
+    tags: ["Plastic Surgery", "English"],
+    rating: "4.9",
+    reviews: "438",
+    price: "$2,750",
+    gradient: "from-brand-teal-500 to-brand-teal-900",
+  },
+  {
+    slug: "toxnfill-dermatology",
+    name: "Toxnfill Dermatology",
+    location: "Gangnam-gu",
+    tags: ["Dermatology", "中文 OK"],
+    rating: "4.7",
+    reviews: "361",
+    price: "$220",
+    gradient: "from-brand-teal-700 to-brand-teal-900",
+  },
+  {
+    slug: "seoul-dental-hub",
+    name: "Seoul Dental Hub",
+    location: "Sinsa-dong",
+    tags: ["Dental", "English"],
+    rating: "4.8",
+    reviews: "184",
+    price: "$350",
+    gradient: "from-brand-teal-500 to-brand-teal-700",
+  },
+  {
+    slug: "forhair-clinic",
+    name: "ForHair Clinic",
+    location: "Gangnam-gu",
+    tags: ["Hair Transplant", "日本語 OK"],
+    rating: "4.9",
+    reviews: "226",
+    price: "$3,400",
+    gradient: "from-brand-teal-900 to-brand-teal-500",
+  },
+  {
+    slug: "view-plastic-surgery",
+    name: "View Plastic Surgery",
+    location: "Gangnam-gu",
+    tags: ["Face Contour", "English"],
+    rating: "4.8",
+    reviews: "517",
+    price: "$4,200",
+    gradient: "from-brand-teal-500 to-brand-teal-900",
+  },
+  {
+    slug: "dream-medical-center",
+    name: "Dream Medical Center",
+    location: "Apgujeong",
+    tags: ["Rhinoplasty", "中文 OK"],
+    rating: "4.7",
+    reviews: "298",
+    price: "$2,550",
+    gradient: "from-brand-teal-700 to-brand-teal-900",
+  },
+  {
+    slug: "jy-dermatology",
+    name: "JY Dermatology",
+    location: "Sinsa-dong",
+    tags: ["Dermatology", "日本語 OK"],
+    rating: "4.8",
+    reviews: "173",
+    price: "$195",
+    gradient: "from-brand-teal-500 to-brand-teal-700",
+  },
+  {
+    slug: "gangnam-dental-center",
+    name: "Gangnam Dental Center",
+    location: "Gangnam-gu",
+    tags: ["Dental", "English"],
+    rating: "4.9",
+    reviews: "342",
+    price: "$420",
+    gradient: "from-brand-teal-900 to-brand-teal-500",
+  },
+  {
+    slug: "motion-hair-clinic",
+    name: "Motion Hair Clinic",
+    location: "Apgujeong",
+    tags: ["Hair Transplant", "English"],
+    rating: "4.8",
+    reviews: "207",
+    price: "$3,250",
+    gradient: "from-brand-teal-500 to-brand-teal-900",
+  },
+  {
+    slug: "da-plastic-surgery",
+    name: "DA Plastic Surgery",
+    location: "Sinsa-dong",
+    tags: ["Plastic Surgery", "中文 OK"],
+    rating: "4.9",
+    reviews: "611",
+    price: "$2,950",
+    gradient: "from-brand-teal-700 to-brand-teal-900",
+  },
+  {
+    slug: "seoul-face-center",
+    name: "Seoul Face Center",
+    location: "Apgujeong",
+    tags: ["Face Contour", "日本語 OK"],
+    rating: "4.7",
+    reviews: "264",
+    price: "$4,800",
+    gradient: "from-brand-teal-500 to-brand-teal-700",
+  },
+  {
+    slug: "renew-rhinoplasty",
+    name: "Renew Rhinoplasty",
+    location: "Gangnam-gu",
+    tags: ["Rhinoplasty", "English"],
+    rating: "4.8",
+    reviews: "193",
+    price: "$2,700",
+    gradient: "from-brand-teal-900 to-brand-teal-500",
+  },
+  {
+    slug: "oracle-dermatology",
+    name: "Oracle Dermatology",
+    location: "Gangnam-gu",
+    tags: ["Dermatology", "中文 OK"],
+    rating: "4.6",
+    reviews: "405",
+    price: "$160",
+    gradient: "from-brand-teal-500 to-brand-teal-900",
+  },
+  {
+    slug: "bright-smile-dental",
+    name: "Bright Smile Dental",
+    location: "Apgujeong",
+    tags: ["Dental", "日本語 OK"],
+    rating: "4.9",
+    reviews: "218",
+    price: "$390",
+    gradient: "from-brand-teal-700 to-brand-teal-900",
+  },
+  {
+    slug: "maxwell-hair-clinic",
+    name: "Maxwell Hair Clinic",
+    location: "Gangnam-gu",
+    tags: ["Hair Transplant", "English"],
+    rating: "4.8",
+    reviews: "287",
+    price: "$3,600",
+    gradient: "from-brand-teal-500 to-brand-teal-700",
+  },
+  {
+    slug: "woori-plastic-surgery",
+    name: "Woori Plastic Surgery",
+    location: "Sinsa-dong",
+    tags: ["Plastic Surgery", "English"],
+    rating: "4.7",
+    reviews: "352",
+    price: "$2,650",
+    gradient: "from-brand-teal-900 to-brand-teal-500",
+  },
+  {
+    slug: "reone-dermatology",
+    name: "Reone Dermatology",
+    location: "Apgujeong",
+    tags: ["Dermatology", "中文 OK"],
+    rating: "4.8",
+    reviews: "149",
+    price: "$210",
+    gradient: "from-brand-teal-500 to-brand-teal-900",
+  },
+  {
+    slug: "onejin-dental",
+    name: "Onejin Dental",
+    location: "Gangnam-gu",
+    tags: ["Dental", "English"],
+    rating: "4.7",
+    reviews: "176",
+    price: "$330",
+    gradient: "from-brand-teal-700 to-brand-teal-900",
+  },
 ];
 
-const specialties = [
-  { label: "Plastic Surgery", defaultChecked: true },
-  { label: "Dermatology", defaultChecked: false },
-  { label: "Dental", defaultChecked: false },
-  { label: "Hair Transplant", defaultChecked: false },
-];
-
-const languages = [
-  { label: "中文 (Chinese)", defaultChecked: true },
-  { label: "日本語 (Japanese)", defaultChecked: false },
-  { label: "English", defaultChecked: true },
-];
-
-function Checkbox({ label, defaultChecked }: { label: string; defaultChecked: boolean }) {
-  return (
-    <label className="mb-1.5 flex w-full cursor-pointer items-center gap-[12.5px] rounded-lg px-3 py-2.5 text-[17.5px] text-brand-ink last:mb-0 hover:bg-brand-cream">
-      <input
-        type="checkbox"
-        defaultChecked={defaultChecked}
-        className="h-5 w-5 shrink-0 rounded border-brand-line text-brand-teal-700 accent-brand-teal-700"
-      />
-      <span className="flex-1">{label}</span>
-    </label>
-  );
-}
+const CLINICS_PER_PAGE = 6;
 
 type ClinicsPageProps = {
   searchParams: Promise<{
     treatment?: string;
     city?: string;
     language?: string;
+    specialties?: string;
+    locations?: string;
+    languages?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    sort?: string;
+    page?: string;
   }>;
 };
 
 export default async function ClinicsPage({ searchParams }: ClinicsPageProps) {
   const params = await searchParams;
-  const treatment = params.treatment ?? "";
-  const city = params.city ?? "";
-  const language = params.language ?? "";
-  const languageToken = language === "Chinese" ? "中文" : language === "Japanese" ? "日本語" : language;
+  const selectedSpecialties = parseList(params.specialties ?? params.treatment);
+  const selectedLocations = parseList(params.locations ?? params.city);
+  const selectedLanguages = parseList(params.languages ?? params.language);
+  const minPrice = clampPrice(params.minPrice, 0);
+  const maxPrice = clampPrice(params.maxPrice, 8000);
+  const sort = ["most-reviewed", "price-low", "price-high"].includes(params.sort ?? "") ? params.sort! : "top-rated";
 
   const filteredClinics = clinics.filter((clinic) => {
-    const matchesTreatment = !treatment || clinic.tags.includes(treatment);
-    const matchesCity = !city || clinic.location === city;
-    const matchesLanguage = !languageToken || clinic.tags.some((tag) => tag.includes(languageToken));
-    return matchesTreatment && matchesCity && matchesLanguage;
+    const price = clinicPrice(clinic.price);
+    const matchesSpecialty = selectedSpecialties.length === 0 || selectedSpecialties.some((specialty) => clinic.tags.includes(specialty));
+    const matchesLocation = selectedLocations.length === 0 || selectedLocations.includes(clinic.location);
+    const matchesLanguage = selectedLanguages.length === 0 || selectedLanguages.some((language) => clinic.tags.some((tag) => tag.includes(languageToken(language))));
+    return matchesSpecialty && matchesLocation && matchesLanguage && price >= minPrice && price <= maxPrice;
   });
 
-  const resultContext = [city || "Seoul", treatment, language].filter(Boolean).join(" · ");
+  const sortedClinics = [...filteredClinics].sort((a, b) => {
+    if (sort === "price-low") return clinicPrice(a.price) - clinicPrice(b.price);
+    if (sort === "price-high") return clinicPrice(b.price) - clinicPrice(a.price);
+    if (sort === "most-reviewed") return Number(b.reviews) - Number(a.reviews);
+    return Number(b.rating) - Number(a.rating) || Number(b.reviews) - Number(a.reviews);
+  });
+
+  const requestedPage = Number.parseInt(params.page ?? "1", 10);
+  const totalPages = Math.max(1, Math.ceil(sortedClinics.length / CLINICS_PER_PAGE));
+  const currentPage = Math.min(Math.max(Number.isFinite(requestedPage) ? requestedPage : 1, 1), totalPages);
+  const pageStart = (currentPage - 1) * CLINICS_PER_PAGE;
+  const paginatedClinics = sortedClinics.slice(pageStart, pageStart + CLINICS_PER_PAGE);
+
+  const resultContext = [
+    selectedLocations.length ? selectedLocations.join(", ") : "Seoul",
+    selectedSpecialties.join(", "),
+    selectedLanguages.join(", "),
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className="flex flex-1 flex-col bg-white">
       <SiteHeader active="Find Clinics" />
 
-      {/* SEARCH BAR */}
-      <div className="border-b border-brand-line bg-brand-cream px-6 py-5 sm:px-10">
-        <ClinicSearchBar
-          variant="compact"
-          initialTreatment={treatment}
-          initialCity={city}
-          initialLanguage={language}
-        />
-      </div>
-
       <div className="flex flex-1 flex-col lg:flex-row">
         {/* FILTERS SIDEBAR */}
-        <aside className="shrink-0 border-b border-brand-line p-6 lg:w-70 lg:border-b-0 lg:border-r">
-          <div className="mb-6.25 flex items-center justify-between">
-            <h4 className="text-[17.5px] font-bold text-brand-ink">Filters</h4>
-            <button className="text-[15px] font-semibold text-brand-teal-500">Clear all</button>
-          </div>
-
-          <div className="mb-6.25 border-b border-brand-line pb-6.25">
-            <div className="mb-3.75 text-[15px] font-semibold uppercase tracking-wide text-brand-muted">Specialty</div>
-            {specialties.map((s) => (
-              <Checkbox key={s.label} label={s.label} defaultChecked={s.defaultChecked} />
-            ))}
-          </div>
-
-          <div className="mb-6.25 border-b border-brand-line pb-6.25">
-            <div className="mb-3.75 text-[15px] font-semibold uppercase tracking-wide text-brand-muted">Price range (USD)</div>
-            <div className="relative my-5 h-1.5 rounded-full bg-brand-line">
-              <div className="absolute inset-y-0 left-[15%] right-[35%] rounded-full bg-brand-teal-500" />
-              <div className="absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full border-2 border-brand-teal-700 bg-white" style={{ left: "15%" }} />
-              <div className="absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full border-2 border-brand-teal-700 bg-white" style={{ left: "65%" }} />
-            </div>
-            <div className="flex justify-between text-[15px] text-brand-muted">
-              <span>$500</span>
-              <span>$8,000+</span>
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-3.75 text-[15px] font-semibold uppercase tracking-wide text-brand-muted">Language support</div>
-            {languages.map((l) => (
-              <Checkbox key={l.label} label={l.label} defaultChecked={l.defaultChecked} />
-            ))}
-          </div>
-        </aside>
+        <ClinicsFilterPanel
+          key={`${selectedSpecialties.join("|")}-${selectedLocations.join("|")}-${selectedLanguages.join("|")}-${minPrice}-${maxPrice}`}
+          specialties={selectedSpecialties}
+          languages={selectedLanguages}
+          locations={selectedLocations}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+        />
 
         {/* RESULTS */}
         <main className="flex-1 p-6 sm:p-8">
@@ -173,13 +322,11 @@ export default async function ClinicsPage({ searchParams }: ClinicsPageProps) {
             <div className="text-sm text-brand-muted">
               <b className="text-brand-ink">{filteredClinics.length} clinics</b>{resultContext ? ` in ${resultContext}` : ""}
             </div>
-            <button className="rounded-lg border border-brand-line px-3.5 py-2 text-sm font-semibold text-brand-ink">
-              Sort: Top rated ▾
-            </button>
+            <ClinicsSort value={sort} />
           </div>
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-            {filteredClinics.map((clinic) => (
+            {paginatedClinics.map((clinic) => (
               <div
                 key={clinic.slug}
                 className="flex h-full flex-col overflow-hidden rounded-xl border border-brand-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-brand-teal-500 hover:shadow-xl hover:shadow-brand-teal-900/10"
@@ -187,7 +334,7 @@ export default async function ClinicsPage({ searchParams }: ClinicsPageProps) {
                 <div className={`relative h-64 bg-linear-to-br ${clinic.gradient}`}>
                   <Link href={`/clinics/${clinic.slug}`} className="absolute inset-0" aria-label={clinic.name} />
                   <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-teal-700">
-                    ✓ Verified
+                    ✦ {clinicBadge(clinic)}
                   </span>
                   <LikeButton />
                 </div>
@@ -227,10 +374,52 @@ export default async function ClinicsPage({ searchParams }: ClinicsPageProps) {
               <p className="mt-2 text-brand-muted">Try changing one or more search options.</p>
             </div>
           )}
+          {filteredClinics.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              query={{
+                specialties: selectedSpecialties.join(","),
+                locations: selectedLocations.join(","),
+                languages: selectedLanguages.join(","),
+                minPrice: minPrice > 0 ? String(minPrice) : "",
+                maxPrice: maxPrice < 8000 ? String(maxPrice) : "",
+                sort: sort === "top-rated" ? "" : sort,
+              }}
+            />
+          )}
         </main>
       </div>
 
       <SiteFooter />
     </div>
   );
+}
+
+function parseList(value?: string) {
+  return value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
+}
+
+function clampPrice(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.min(8000, Math.max(0, parsed)) : fallback;
+}
+
+function clinicPrice(value: string) {
+  return Number(value.replace(/[^0-9]/g, ""));
+}
+
+function languageToken(language: string) {
+  if (language === "Chinese") return "中文";
+  if (language === "Japanese") return "日本語";
+  return language;
+}
+
+function clinicBadge(clinic: (typeof clinics)[number]) {
+  if (Number(clinic.rating) >= 4.9) return "Top Rated";
+  if (Number(clinic.reviews) >= 400) return "Patient Choice";
+  if (clinicPrice(clinic.price) <= 400) return "Best Value";
+  if (clinic.tags.includes("Hair Transplant")) return "Specialist";
+  if (clinic.tags.includes("English")) return "International Friendly";
+  return "Popular";
 }

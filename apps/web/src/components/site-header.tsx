@@ -37,7 +37,7 @@ export function SiteHeader({ active }: { active?: string }) {
           Log in
         </Link>
         <Link
-          href="/login"
+          href="/signup"
           className="rounded-[11px] bg-brand-teal-700 px-6.25 py-[12.5px] text-[17.5px] font-semibold text-white hover:bg-brand-teal-900"
         >
           Get started

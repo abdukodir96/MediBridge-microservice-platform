@@ -16,6 +16,7 @@ const clinics = [
     rating: "4.9",
     reviews: "312",
     price: "$2,400",
+    badge: "Top Rated",
     gradient: "from-brand-teal-500 to-brand-teal-900",
   },
   {
@@ -26,6 +27,7 @@ const clinics = [
     rating: "4.8",
     reviews: "206",
     price: "$180",
+    badge: "Best Value",
     gradient: "from-brand-teal-700 to-brand-teal-900",
   },
   {
@@ -36,6 +38,7 @@ const clinics = [
     rating: "5.0",
     reviews: "489",
     price: "$3,100",
+    badge: "Patient Choice",
     gradient: "from-brand-teal-700 to-brand-teal-900",
   },
   {
@@ -46,6 +49,7 @@ const clinics = [
     rating: "4.9",
     reviews: "271",
     price: "$2,900",
+    badge: "International Friendly",
     gradient: "from-brand-teal-500 to-brand-teal-900",
   },
 ];
@@ -125,7 +129,7 @@ export default function Home() {
               <div className={`relative h-64 bg-linear-to-br ${clinic.gradient}`}>
                 <Link href={`/clinics/${clinic.slug}`} className="absolute inset-0" aria-label={clinic.name} />
                 <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-teal-700">
-                  ✦ Top Rated
+                  ✦ {clinic.badge}
                 </span>
                 <LikeButton />
               </div>
