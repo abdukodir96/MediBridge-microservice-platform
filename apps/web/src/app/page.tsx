@@ -1,8 +1,11 @@
+import Image from "next/image";
 import Link from "next/link";
 import { LikeButton } from "@/components/like-button";
 import { TrustStats } from "@/components/trust-stats";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { ClinicSearchBar } from "@/components/clinic-search-bar";
+import { Testimonials } from "@/components/testimonials";
 
 const clinics = [
   {
@@ -72,47 +75,30 @@ export default function Home() {
       <SiteHeader />
 
       {/* HERO */}
-      <section className="relative isolate overflow-hidden px-6 py-16 sm:px-10 sm:py-20">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 -z-20 h-full w-full object-cover blur-[1px]"
-        >
-          <source src="/video/video.mp4" type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 -z-10 bg-brand-cream/70" />
+      <section className="relative isolate min-h-[calc(100svh-78px)] overflow-hidden px-6 py-16 sm:px-10 sm:py-20">
+        <Image
+          src="/doctor/doctor.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="-z-20 scale-[1.01] object-cover object-center"
+          aria-hidden="true"
+        />
 
-        <span className="mb-6 inline-flex items-center gap-1.5 rounded-full bg-brand-teal-100 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-brand-teal-500">
+        <span className="mb-7 inline-flex items-center gap-2 rounded-full bg-brand-teal-100 px-5 py-2.5 text-base font-semibold uppercase tracking-wider text-brand-teal-500">
           ✦ 1.17M+ patients trust Korea every year
         </span>
-        <h1 className="mb-6 max-w-3xl font-serif text-6xl font-semibold leading-tight tracking-tight text-brand-teal-900 sm:text-7xl sm:leading-[1.08]">
+        <h1 className="mb-7 max-w-4xl font-serif text-[64px] font-semibold leading-[1.08] tracking-tight text-brand-teal-900 sm:text-[78px]">
           Your bridge to Korea&apos;s <em className="italic text-brand-gold">trusted</em> clinics.
         </h1>
-        <p className="mb-12 max-w-2xl text-xl text-brand-muted sm:text-2xl">
+        <p className="mb-14 max-w-3xl text-[22px] leading-relaxed text-brand-muted sm:text-[27px]">
           Compare verified plastic surgery & dermatology clinics, book with confidence, and pay
           safely — every step handled in your language.
         </p>
 
         {/* SEARCH */}
-        <div className="mb-4 flex max-w-4xl flex-col divide-y divide-brand-line rounded-2xl border border-brand-line bg-white p-4 shadow-lg shadow-brand-teal-900/5 sm:flex-row sm:divide-x sm:divide-y-0">
-          <div className="flex-1 px-6 py-4">
-            <div className="text-sm font-semibold uppercase tracking-wide text-brand-muted">Treatment</div>
-            <div className="text-lg font-medium text-brand-ink">Rhinoplasty</div>
-          </div>
-          <div className="flex-1 px-6 py-4">
-            <div className="text-sm font-semibold uppercase tracking-wide text-brand-muted">City</div>
-            <div className="text-lg font-medium text-brand-ink">Seoul · Gangnam</div>
-          </div>
-          <div className="flex-1 px-6 py-4">
-            <div className="text-sm font-semibold uppercase tracking-wide text-brand-muted">Language</div>
-            <div className="text-lg font-medium text-brand-ink">中文 · English</div>
-          </div>
-          <button className="mt-2 flex items-center justify-center rounded-xl bg-brand-gold px-10 py-4 text-lg font-bold text-brand-teal-900 sm:mt-0">
-            Search →
-          </button>
-        </div>
+        <ClinicSearchBar />
       </section>
 
       <TrustStats />
@@ -174,6 +160,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <Testimonials />
 
       {/* HOW IT WORKS */}
       <section className="relative z-10 bg-brand-teal-900 px-6 py-12 text-white shadow-[0_-8px_16px_-12px_rgba(13,59,59,0.3)] sm:px-10 sm:py-14">

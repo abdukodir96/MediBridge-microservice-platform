@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { LikeButton } from "@/components/like-button";
+import { ClinicSearchBar } from "@/components/clinic-search-bar";
 
 const clinics = [
   {
@@ -92,30 +93,42 @@ function Checkbox({ label, defaultChecked }: { label: string; defaultChecked: bo
   );
 }
 
-export default function ClinicsPage() {
+type ClinicsPageProps = {
+  searchParams: Promise<{
+    treatment?: string;
+    city?: string;
+    language?: string;
+  }>;
+};
+
+export default async function ClinicsPage({ searchParams }: ClinicsPageProps) {
+  const params = await searchParams;
+  const treatment = params.treatment ?? "";
+  const city = params.city ?? "";
+  const language = params.language ?? "";
+  const languageToken = language === "Chinese" ? "中文" : language === "Japanese" ? "日本語" : language;
+
+  const filteredClinics = clinics.filter((clinic) => {
+    const matchesTreatment = !treatment || clinic.tags.includes(treatment);
+    const matchesCity = !city || clinic.location === city;
+    const matchesLanguage = !languageToken || clinic.tags.some((tag) => tag.includes(languageToken));
+    return matchesTreatment && matchesCity && matchesLanguage;
+  });
+
+  const resultContext = [city || "Seoul", treatment, language].filter(Boolean).join(" · ");
+
   return (
     <div className="flex flex-1 flex-col bg-white">
       <SiteHeader active="Find Clinics" />
 
       {/* SEARCH BAR */}
       <div className="border-b border-brand-line bg-brand-cream px-6 py-5 sm:px-10">
-        <div className="flex max-w-4xl flex-col divide-y divide-brand-line rounded-2xl border border-brand-line bg-white p-2 shadow-lg shadow-brand-teal-900/5 sm:flex-row sm:divide-x sm:divide-y-0">
-          <div className="flex-1 px-5 py-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-brand-muted">Treatment</div>
-            <div className="text-base font-medium text-brand-ink">Rhinoplasty</div>
-          </div>
-          <div className="flex-1 px-5 py-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-brand-muted">City</div>
-            <div className="text-base font-medium text-brand-ink">Seoul · Gangnam</div>
-          </div>
-          <div className="flex-1 px-5 py-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-brand-muted">Language</div>
-            <div className="text-base font-medium text-brand-ink">中文 · English</div>
-          </div>
-          <button className="mt-2 flex items-center justify-center rounded-xl bg-brand-gold px-8 py-3 text-base font-bold text-brand-teal-900 sm:mt-0">
-            Search →
-          </button>
-        </div>
+        <ClinicSearchBar
+          variant="compact"
+          initialTreatment={treatment}
+          initialCity={city}
+          initialLanguage={language}
+        />
       </div>
 
       <div className="flex flex-1 flex-col lg:flex-row">
@@ -158,7 +171,7 @@ export default function ClinicsPage() {
         <main className="flex-1 p-6 sm:p-8">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div className="text-sm text-brand-muted">
-              <b className="text-brand-ink">{clinics.length} clinics</b> in Seoul · Plastic Surgery
+              <b className="text-brand-ink">{filteredClinics.length} clinics</b>{resultContext ? ` in ${resultContext}` : ""}
             </div>
             <button className="rounded-lg border border-brand-line px-3.5 py-2 text-sm font-semibold text-brand-ink">
               Sort: Top rated ▾
@@ -166,7 +179,7 @@ export default function ClinicsPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-            {clinics.map((clinic) => (
+            {filteredClinics.map((clinic) => (
               <div
                 key={clinic.slug}
                 className="flex h-full flex-col overflow-hidden rounded-xl border border-brand-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-brand-teal-500 hover:shadow-xl hover:shadow-brand-teal-900/10"
@@ -208,6 +221,12 @@ export default function ClinicsPage() {
               </div>
             ))}
           </div>
+          {filteredClinics.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-cream/40 px-6 py-16 text-center">
+              <h2 className="font-serif text-2xl font-semibold text-brand-teal-900">No clinics found</h2>
+              <p className="mt-2 text-brand-muted">Try changing one or more search options.</p>
+            </div>
+          )}
         </main>
       </div>
 
