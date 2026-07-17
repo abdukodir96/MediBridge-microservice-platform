@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { LikeButton } from "@/components/like-button";
+import { TrustStats } from "@/components/trust-stats";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 
 const clinics = [
   {
+    slug: "seoul-line-clinic",
     name: "Seoul Line Clinic",
     location: "Gangnam-gu, Seoul",
     tags: ["Plastic Surgery", "中文 OK"],
@@ -12,6 +16,7 @@ const clinics = [
     gradient: "from-brand-teal-500 to-brand-teal-900",
   },
   {
+    slug: "apgujeong-derma-center",
     name: "Apgujeong Derma Center",
     location: "Apgujeong, Seoul",
     tags: ["Dermatology", "日本語 OK"],
@@ -21,6 +26,7 @@ const clinics = [
     gradient: "from-brand-teal-700 to-brand-teal-900",
   },
   {
+    slug: "banobagi-aesthetic",
     name: "Banobagi Aesthetic",
     location: "Sinsa-dong, Seoul",
     tags: ["Face Contour", "English"],
@@ -30,6 +36,7 @@ const clinics = [
     gradient: "from-brand-teal-700 to-brand-teal-900",
   },
   {
+    slug: "wonjin-beauty-medical",
     name: "Wonjin Beauty Medical",
     location: "Sinsa-dong, Seoul",
     tags: ["Rhinoplasty", "English"],
@@ -59,99 +66,56 @@ const steps = [
   },
 ];
 
-function Logo() {
-  return (
-    <Link href="/" className="flex items-center gap-2 font-serif text-xl font-semibold text-brand-teal-900">
-      <span className="flex h-6.5 w-6.5 items-center justify-center rounded-[7px] bg-brand-teal-700">
-        <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
-          <path d="M12 3v18M3 12h18" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
-        </svg>
-      </span>
-      MediBridge
-    </Link>
-  );
-}
-
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-white">
-      {/* NAV */}
-      <header className="flex items-center justify-between border-b border-brand-line px-6 py-4 sm:px-10">
-        <Logo />
-        <nav className="hidden items-center gap-7 text-sm font-medium text-brand-muted lg:flex">
-          <a href="#" className="hover:text-brand-teal-700">Find Clinics</a>
-          <a href="#" className="hover:text-brand-teal-700">Procedures</a>
-          <a href="#" className="hover:text-brand-teal-700">How It Works</a>
-          <a href="#" className="hover:text-brand-teal-700">For Clinics</a>
-        </nav>
-        <div className="flex items-center gap-4 sm:gap-5">
-          <span className="hidden items-center gap-1.5 text-sm font-medium text-brand-muted sm:flex">
-            🌐 EN
-          </span>
-          <Link href="/login" className="text-sm font-semibold text-brand-teal-700">
-            Log in
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-[9px] bg-brand-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-teal-900"
-          >
-            Get started
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* HERO */}
-      <section className="bg-linear-to-b from-brand-cream to-white px-6 py-14 sm:px-10 sm:py-16">
-        <span className="mb-5 inline-flex items-center gap-1.5 rounded-full bg-brand-teal-100 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-brand-teal-500">
+      <section className="relative isolate overflow-hidden px-6 py-16 sm:px-10 sm:py-20">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 -z-20 h-full w-full object-cover blur-[1px]"
+        >
+          <source src="/video/video.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 -z-10 bg-brand-cream/70" />
+
+        <span className="mb-6 inline-flex items-center gap-1.5 rounded-full bg-brand-teal-100 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-brand-teal-500">
           ✦ 1.17M+ patients trust Korea every year
         </span>
-        <h1 className="mb-4 max-w-xl font-serif text-4xl font-semibold leading-tight tracking-tight text-brand-teal-900 sm:text-5xl sm:leading-[1.1]">
+        <h1 className="mb-6 max-w-3xl font-serif text-6xl font-semibold leading-tight tracking-tight text-brand-teal-900 sm:text-7xl sm:leading-[1.08]">
           Your bridge to Korea&apos;s <em className="italic text-brand-gold">trusted</em> clinics.
         </h1>
-        <p className="mb-8 max-w-md text-base text-brand-muted sm:text-lg">
+        <p className="mb-12 max-w-2xl text-xl text-brand-muted sm:text-2xl">
           Compare verified plastic surgery & dermatology clinics, book with confidence, and pay
           safely — every step handled in your language.
         </p>
 
         {/* SEARCH */}
-        <div className="mb-10 flex max-w-2xl flex-col divide-y divide-brand-line rounded-2xl border border-brand-line bg-white p-2 shadow-lg shadow-brand-teal-900/5 sm:flex-row sm:divide-x sm:divide-y-0">
-          <div className="flex-1 px-4 py-2.5">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-muted">Treatment</div>
-            <div className="text-sm font-medium text-brand-ink">Rhinoplasty</div>
+        <div className="mb-4 flex max-w-4xl flex-col divide-y divide-brand-line rounded-2xl border border-brand-line bg-white p-4 shadow-lg shadow-brand-teal-900/5 sm:flex-row sm:divide-x sm:divide-y-0">
+          <div className="flex-1 px-6 py-4">
+            <div className="text-sm font-semibold uppercase tracking-wide text-brand-muted">Treatment</div>
+            <div className="text-lg font-medium text-brand-ink">Rhinoplasty</div>
           </div>
-          <div className="flex-1 px-4 py-2.5">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-muted">City</div>
-            <div className="text-sm font-medium text-brand-ink">Seoul · Gangnam</div>
+          <div className="flex-1 px-6 py-4">
+            <div className="text-sm font-semibold uppercase tracking-wide text-brand-muted">City</div>
+            <div className="text-lg font-medium text-brand-ink">Seoul · Gangnam</div>
           </div>
-          <div className="flex-1 px-4 py-2.5">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-muted">Language</div>
-            <div className="text-sm font-medium text-brand-ink">中文 · English</div>
+          <div className="flex-1 px-6 py-4">
+            <div className="text-sm font-semibold uppercase tracking-wide text-brand-muted">Language</div>
+            <div className="text-lg font-medium text-brand-ink">中文 · English</div>
           </div>
-          <button className="mt-2 flex items-center justify-center rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-bold text-brand-teal-900 sm:mt-0">
+          <button className="mt-2 flex items-center justify-center rounded-xl bg-brand-gold px-10 py-4 text-lg font-bold text-brand-teal-900 sm:mt-0">
             Search →
           </button>
         </div>
-
-        {/* TRUST */}
-        <div className="grid max-w-2xl grid-cols-2 gap-6 border-t border-brand-line pt-7 sm:grid-cols-4 sm:gap-10">
-          <div>
-            <div className="font-serif text-2xl font-semibold text-brand-teal-900 sm:text-3xl">240+</div>
-            <div className="text-xs text-brand-muted sm:text-[12.5px]">Verified clinics</div>
-          </div>
-          <div>
-            <div className="font-serif text-2xl font-semibold text-brand-teal-900 sm:text-3xl">18K</div>
-            <div className="text-xs text-brand-muted sm:text-[12.5px]">Bookings completed</div>
-          </div>
-          <div>
-            <div className="font-serif text-2xl font-semibold text-brand-teal-900 sm:text-3xl">4.9★</div>
-            <div className="text-xs text-brand-muted sm:text-[12.5px]">Avg. patient rating</div>
-          </div>
-          <div>
-            <div className="font-serif text-2xl font-semibold text-brand-teal-900 sm:text-3xl">100%</div>
-            <div className="text-xs text-brand-muted sm:text-[12.5px]">Escrow-protected pay</div>
-          </div>
-        </div>
       </section>
+
+      <TrustStats />
 
       {/* FEATURED CLINICS */}
       <section className="px-6 py-12 sm:px-10 sm:py-14">
@@ -164,41 +128,44 @@ export default function Home() {
               Hand-verified by our medical team · updated weekly
             </p>
           </div>
-          <a href="#" className="group flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-brand-teal-500">
+          <Link href="/clinics" className="group flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-brand-teal-500">
             View all clinics
             <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-          </a>
+          </Link>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {clinics.map((clinic) => (
-            <div key={clinic.name} className="flex h-full flex-col overflow-hidden rounded-xl border border-brand-line bg-white">
+            <div key={clinic.name} className="flex h-full flex-col overflow-hidden rounded-xl border border-brand-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-brand-teal-500 hover:shadow-xl hover:shadow-brand-teal-900/10">
               <div className={`relative h-64 bg-linear-to-br ${clinic.gradient}`}>
+                <Link href={`/clinics/${clinic.slug}`} className="absolute inset-0" aria-label={clinic.name} />
                 <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-teal-700">
                   ✦ Top Rated
                 </span>
                 <LikeButton />
               </div>
               <div className="flex flex-1 flex-col p-5">
-                <div className="mb-1.5 text-base font-bold text-brand-ink">{clinic.name}</div>
-                <div className="mb-4 flex items-center gap-1 text-[11px] text-brand-muted">
+                <Link href={`/clinics/${clinic.slug}`} className="mb-2 block text-xl font-bold text-brand-ink hover:text-brand-teal-700">
+                  {clinic.name}
+                </Link>
+                <div className="mb-5 flex items-center gap-1.5 text-base text-brand-muted">
                   📍 {clinic.location}
                 </div>
-                <div className="mb-6 flex flex-1 flex-wrap items-start gap-1.5">
+                <div className="mb-7 flex flex-1 flex-wrap items-start gap-2">
                   {clinic.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full bg-brand-teal-100 px-2 py-0.5 text-[10px] font-semibold text-brand-teal-700"
+                      className="rounded-full bg-brand-teal-100 px-3 py-1 text-sm font-semibold text-brand-teal-700"
                     >
                       {tag}
                     </span>
                   ))}
                 </div>
-                <div className="flex items-center justify-between border-t border-brand-line pt-3">
-                  <span className="flex items-center gap-1 text-xs font-bold text-brand-ink">
+                <div className="flex items-center justify-between border-t border-brand-line pt-4">
+                  <span className="flex items-center gap-1.5 text-lg font-bold text-brand-ink">
                     <span className="text-brand-gold">★</span> {clinic.rating}
                     <span className="font-normal text-brand-muted">({clinic.reviews})</span>
                   </span>
-                  <span className="text-xs text-brand-muted">
+                  <span className="text-base text-brand-muted">
                     from <b className="text-brand-teal-900">{clinic.price}</b>
                   </span>
                 </div>
@@ -209,7 +176,7 @@ export default function Home() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="bg-brand-teal-900 px-6 py-12 text-white sm:px-10 sm:py-14">
+      <section className="relative z-10 bg-brand-teal-900 px-6 py-12 text-white shadow-[0_-8px_16px_-12px_rgba(13,59,59,0.3)] sm:px-10 sm:py-14">
         <h2 className="mb-2 font-serif text-2xl font-semibold sm:text-[30px]">How MediBridge works</h2>
         <p className="mb-8 max-w-md text-sm text-brand-teal-100/75">
           From your first question to your recovery flight home — one platform, one trusted process.
@@ -228,7 +195,7 @@ export default function Home() {
       </section>
 
       {/* ESCROW STRIP */}
-      <div className="relative mx-6 -mt-6 flex flex-col gap-4 rounded-2xl border border-brand-line bg-white p-5 shadow-xl shadow-brand-teal-900/10 sm:mx-10 sm:-mt-6.5 sm:flex-row sm:items-center sm:p-6">
+      <div className="relative z-20 mx-6 -mt-6 flex flex-col gap-4 rounded-2xl border border-brand-line bg-white p-5 shadow-xl shadow-brand-teal-900/10 sm:mx-10 sm:-mt-6.5 sm:flex-row sm:items-center sm:p-6">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] bg-brand-teal-100">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
             <path
@@ -254,35 +221,7 @@ export default function Home() {
         </a>
       </div>
 
-      {/* FOOTER */}
-      <footer className="mt-5 flex flex-col gap-10 border-t border-brand-line px-6 py-10 sm:px-10 md:flex-row md:justify-between">
-        <div>
-          <Logo />
-          <p className="mt-2.5 max-w-56 text-[13px] text-brand-muted">
-            The trusted bridge between international patients and Korea&apos;s best clinics.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-10 sm:grid-cols-3">
-          <div>
-            <h5 className="mb-2.5 text-xs uppercase tracking-wide text-brand-muted">Patients</h5>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">Find clinics</a>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">How it works</a>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">Safety & escrow</a>
-          </div>
-          <div>
-            <h5 className="mb-2.5 text-xs uppercase tracking-wide text-brand-muted">Clinics</h5>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">List your clinic</a>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">Partner login</a>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">Pricing</a>
-          </div>
-          <div>
-            <h5 className="mb-2.5 text-xs uppercase tracking-wide text-brand-muted">Company</h5>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">About</a>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">Contact</a>
-            <a href="#" className="mb-1.5 block text-sm text-brand-ink hover:text-brand-teal-700">Trust & Safety</a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
