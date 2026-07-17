@@ -81,13 +81,13 @@ const languages = [
 
 function Checkbox({ label, defaultChecked }: { label: string; defaultChecked: boolean }) {
   return (
-    <label className="mb-2.5 flex items-center gap-2.5 text-sm text-brand-ink last:mb-0">
+    <label className="mb-1.5 flex w-full cursor-pointer items-center gap-[12.5px] rounded-lg px-3 py-2.5 text-[17.5px] text-brand-ink last:mb-0 hover:bg-brand-cream">
       <input
         type="checkbox"
         defaultChecked={defaultChecked}
-        className="h-4 w-4 rounded border-brand-line text-brand-teal-700 accent-brand-teal-700"
+        className="h-5 w-5 shrink-0 rounded border-brand-line text-brand-teal-700 accent-brand-teal-700"
       />
-      {label}
+      <span className="flex-1">{label}</span>
     </label>
   );
 }
@@ -120,34 +120,34 @@ export default function ClinicsPage() {
 
       <div className="flex flex-1 flex-col lg:flex-row">
         {/* FILTERS SIDEBAR */}
-        <aside className="shrink-0 border-b border-brand-line p-6 lg:w-64 lg:border-b-0 lg:border-r">
-          <div className="mb-5 flex items-center justify-between">
-            <h4 className="text-sm font-bold text-brand-ink">Filters</h4>
-            <button className="text-xs font-semibold text-brand-teal-500">Clear all</button>
+        <aside className="shrink-0 border-b border-brand-line p-6 lg:w-70 lg:border-b-0 lg:border-r">
+          <div className="mb-6.25 flex items-center justify-between">
+            <h4 className="text-[17.5px] font-bold text-brand-ink">Filters</h4>
+            <button className="text-[15px] font-semibold text-brand-teal-500">Clear all</button>
           </div>
 
-          <div className="mb-5 border-b border-brand-line pb-5">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-muted">Specialty</div>
+          <div className="mb-6.25 border-b border-brand-line pb-6.25">
+            <div className="mb-3.75 text-[15px] font-semibold uppercase tracking-wide text-brand-muted">Specialty</div>
             {specialties.map((s) => (
               <Checkbox key={s.label} label={s.label} defaultChecked={s.defaultChecked} />
             ))}
           </div>
 
-          <div className="mb-5 border-b border-brand-line pb-5">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-muted">Price range (USD)</div>
-            <div className="relative my-4 h-1.5 rounded-full bg-brand-line">
+          <div className="mb-6.25 border-b border-brand-line pb-6.25">
+            <div className="mb-3.75 text-[15px] font-semibold uppercase tracking-wide text-brand-muted">Price range (USD)</div>
+            <div className="relative my-5 h-1.5 rounded-full bg-brand-line">
               <div className="absolute inset-y-0 left-[15%] right-[35%] rounded-full bg-brand-teal-500" />
-              <div className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-brand-teal-700 bg-white" style={{ left: "15%" }} />
-              <div className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-brand-teal-700 bg-white" style={{ left: "65%" }} />
+              <div className="absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full border-2 border-brand-teal-700 bg-white" style={{ left: "15%" }} />
+              <div className="absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full border-2 border-brand-teal-700 bg-white" style={{ left: "65%" }} />
             </div>
-            <div className="flex justify-between text-xs text-brand-muted">
+            <div className="flex justify-between text-[15px] text-brand-muted">
               <span>$500</span>
               <span>$8,000+</span>
             </div>
           </div>
 
           <div>
-            <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-muted">Language support</div>
+            <div className="mb-3.75 text-[15px] font-semibold uppercase tracking-wide text-brand-muted">Language support</div>
             {languages.map((l) => (
               <Checkbox key={l.label} label={l.label} defaultChecked={l.defaultChecked} />
             ))}
