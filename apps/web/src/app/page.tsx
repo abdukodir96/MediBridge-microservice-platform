@@ -2,8 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { LikeButton } from "@/components/like-button";
 import { TrustStats } from "@/components/trust-stats";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { ClinicSearchBar } from "@/components/clinic-search-bar";
 import { Testimonials } from "@/components/testimonials";
 
@@ -76,8 +74,6 @@ const steps = [
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-white">
-      <SiteHeader />
-
       {/* HERO */}
       <section className="relative isolate min-h-[calc(100svh-78px)] overflow-hidden px-6 py-16 sm:px-10 sm:py-20">
         <Image
@@ -213,7 +209,6 @@ export default function Home() {
         </a>
       </div>
 
-      <SiteFooter />
     </div>
   );
 }

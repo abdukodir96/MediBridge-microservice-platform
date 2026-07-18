@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { NavAuthLinks } from "@/components/nav-auth-links";
 
@@ -9,7 +12,10 @@ const navLinks = [
   { href: "#", label: "For Clinics" },
 ];
 
-export function SiteHeader({ active }: { active?: string }) {
+export function SiteHeader() {
+  const pathname = usePathname();
+  const active = pathname.startsWith("/clinics") ? "Find Clinics" : undefined;
+
   return (
     <header className="relative z-10 flex items-center justify-between border-b border-brand-line px-6 py-4 shadow-[0_8px_16px_-12px_rgba(13,59,59,0.2)] sm:px-10">
       <Logo />

@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 const procedureOptions = ["Rhinoplasty", "Double Eyelid Surgery", "Face Contouring"];
 const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export function ClinicBookingCard({ clinicName, startingPrice }: { clinicName: string; startingPrice: string }) {
+export function ClinicBookingCard({ clinicSlug, clinicName, startingPrice }: { clinicSlug: string; clinicName: string; startingPrice: string }) {
   const router = useRouter();
   const [procedure, setProcedure] = useState("Rhinoplasty");
   const [date, setDate] = useState("2026-08-12");
@@ -41,14 +41,9 @@ export function ClinicBookingCard({ clinicName, startingPrice }: { clinicName: s
     return false;
   };
 
-  const requestBooking = async () => {
-    if (!(await requireLogin())) return;
-    await Swal.fire({
-      icon: "success",
-      title: "Booking request prepared",
-      text: `${clinicName} · ${procedure} · ${date}`,
-      confirmButtonColor: "#125453",
-    });
+  const requestBooking = () => {
+    const query = new URLSearchParams({ clinic: clinicSlug, clinicName, procedure, date });
+    router.push(`/booking/new?${query.toString()}`);
   };
 
   const startChat = async () => {

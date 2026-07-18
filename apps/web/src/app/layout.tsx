@@ -4,6 +4,8 @@ import "aos/dist/aos.css";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { PageTransition } from "@/components/page-transition";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -36,7 +38,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <Providers>
+          <SiteHeader />
           <PageTransition>{children}</PageTransition>
+          <SiteFooter />
         </Providers>
       </body>
     </html>

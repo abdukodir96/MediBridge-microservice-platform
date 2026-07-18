@@ -1,8 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { ClinicBookingCard } from "@/components/clinic-booking-card";
 import { ClinicComments } from "@/components/clinic-comments";
 import { ClinicProfileStats } from "@/components/clinic-profile-stats";
@@ -47,8 +45,6 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <SiteHeader active="Find Clinics" />
-
       <section className="relative h-[300px] overflow-hidden bg-brand-teal-900 sm:h-[380px]">
         <Image src="/doctor/doctor.jpg" alt="" fill priority sizes="100vw" className="object-cover object-center opacity-75" />
         <div className="absolute inset-0 bg-linear-to-r from-brand-teal-900/80 via-brand-teal-700/35 to-brand-teal-900/55" />
@@ -110,11 +106,10 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
         </div>
 
         <div className="order-first lg:order-none">
-          <ClinicBookingCard clinicName={clinicName} startingPrice="$2,400" />
+          <ClinicBookingCard clinicSlug={slug} clinicName={clinicName} startingPrice="$2,400" />
         </div>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

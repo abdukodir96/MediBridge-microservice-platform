@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { LikeButton } from "@/components/like-button";
 import { Pagination } from "@/components/pagination";
 import { ClinicsFilterPanel, ClinicsSort } from "@/components/clinics-filter-panel";
@@ -303,8 +301,6 @@ export default async function ClinicsPage({ searchParams }: ClinicsPageProps) {
 
   return (
     <div className="flex flex-1 flex-col bg-white">
-      <SiteHeader active="Find Clinics" />
-
       <div className="flex flex-1 flex-col lg:flex-row">
         {/* FILTERS SIDEBAR */}
         <ClinicsFilterPanel
@@ -391,7 +387,6 @@ export default async function ClinicsPage({ searchParams }: ClinicsPageProps) {
         </main>
       </div>
 
-      <SiteFooter />
     </div>
   );
 }

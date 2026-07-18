@@ -29,10 +29,43 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+@keyframes booking-step-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0) scale(0.992);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.booking-step-transition {
+  animation: booking-step-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top center;
+}
+
 [data-aos="fade-up"][data-aos="fade-up"] {
   transform: translate3d(0, 28px, 0);
 }
 
 [data-aos="fade-up"][data-aos="fade-up"].aos-animate {
   transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-step-transition {
+    animation: none;
+  }
 }
