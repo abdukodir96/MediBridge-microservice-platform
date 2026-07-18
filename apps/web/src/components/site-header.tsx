@@ -14,7 +14,10 @@ const navLinks = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const isAuthPage = pathname === "/login" || pathname === "/signup";
   const active = pathname.startsWith("/clinics") ? "Find Clinics" : undefined;
+
+  if (isAuthPage) return null;
 
   return (
     <header className="relative z-10 flex items-center justify-between border-b border-brand-line px-6 py-4 shadow-[0_8px_16px_-12px_rgba(13,59,59,0.2)] sm:px-10">

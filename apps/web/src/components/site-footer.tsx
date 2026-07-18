@@ -1,6 +1,14 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/logo";
 
 export function SiteFooter() {
+  const pathname = usePathname();
+  const isAuthPage = pathname === "/login" || pathname === "/signup";
+
+  if (isAuthPage) return null;
+
   return (
     <footer className="relative z-10 mt-6.25 flex flex-col gap-12.5 border-t border-brand-line px-7.5 py-12.5 shadow-[0_-8px_16px_-12px_rgba(13,59,59,0.2)] sm:px-12.5 md:flex-row md:justify-between">
       <div>

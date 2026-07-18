@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Swal from "sweetalert2";
 
-const steps = ["Details", "Medical info", "Review", "Payment"];
+const steps = ["Details", "Medical info", "Review & Submit", "Payment"];
 const countries = ["Uzbekistan", "South Korea", "China", "Japan", "United States", "Other"];
 const languages = ["English", "中文 (Chinese)", "日本語 (Japanese)", "한국어 (Korean)", "O‘zbek tili"];
 const flexibilityOptions = ["Exact date only", "± 3 days is fine", "± 1 week is fine", "My dates are flexible"];
@@ -34,7 +34,6 @@ type BookingDraft = {
   preferredDate?: string;
   form?: Partial<FormState>;
   documentName?: string;
-  consent?: boolean;
 };
 
 const initialForm: FormState = {
@@ -64,7 +63,6 @@ export function BookingFlow() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(initialForm);
   const [documentName, setDocumentName] = useState("blood_test_2026.pdf");
-  const [consent, setConsent] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
   useEffect(() => {
@@ -82,7 +80,6 @@ export function BookingFlow() {
         if (typeof draft.preferredDate === "string") setPreferredDate(draft.preferredDate);
         if (draft.form) setForm((current) => ({ ...current, ...draft.form }));
         if (typeof draft.documentName === "string") setDocumentName(draft.documentName);
-        if (typeof draft.consent === "boolean") setConsent(draft.consent);
         if (typeof draft.step === "number" && draft.step >= 1 && draft.step <= 4) setStep(draft.step);
       }
       setDraftLoaded(true);
@@ -93,9 +90,9 @@ export function BookingFlow() {
 
   useEffect(() => {
     if (!draftLoaded) return;
-    const draft: BookingDraft = { step, procedure, preferredDate, form, documentName, consent };
+    const draft: BookingDraft = { step, procedure, preferredDate, form, documentName };
     sessionStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [consent, documentName, draftKey, draftLoaded, form, preferredDate, procedure, step]);
+  }, [documentName, draftKey, draftLoaded, form, preferredDate, procedure, step]);
 
   const updateForm = <Key extends keyof FormState>(key: Key, value: FormState[Key]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -114,6 +111,10 @@ export function BookingFlow() {
         !procedure.trim() && "procedure",
         !preferredDate && "preferred date",
         !form.flexibility && "date flexibility",
+        !form.email.trim() && "email address",
+        !form.phone.trim() && "phone number",
+        form.email.trim() && !isValidEmail(form.email) && "valid email address",
+        form.phone.trim() && !isValidPhone(form.phone) && "valid phone number",
       ].filter(Boolean);
       if (missingFields.length > 0) {
         await showValidation(`Please complete: ${missingFields.join(", ")}.`);
@@ -132,10 +133,6 @@ export function BookingFlow() {
         return;
       }
     }
-    if (step === 3 && !consent) {
-      await showValidation("Confirm that the booking information is correct.");
-      return;
-    }
     if (step === 4) {
       if (form.paymentMethod === "card" && (!form.cardNumber.trim() || !form.expiry.trim() || !form.cvc.trim())) {
         await showValidation("Enter your card number, expiry date, and CVC.");
@@ -144,12 +141,12 @@ export function BookingFlow() {
       await Swal.fire({
         icon: "success",
         title: "Booking confirmed",
-        text: "Your payment is protected in escrow. The clinic will contact you shortly.",
+        text: clinicName + " received your booking request. Your payment is protected by escrow.",
         confirmButtonText: "View clinic",
         confirmButtonColor: "#125453",
       });
       sessionStorage.removeItem(draftKey);
-      router.push(`/clinics/${clinicSlug}`);
+      router.push("/clinics/" + clinicSlug);
       return;
     }
     setStep((current) => Math.min(4, current + 1));
@@ -174,7 +171,7 @@ export function BookingFlow() {
     <div className="min-h-screen bg-white">
       <BookingStepper currentStep={step} onStepClick={(nextStep) => nextStep < step && setStep(nextStep)} />
 
-      <main className="mx-auto grid w-full max-w-[1720px] gap-9 px-5 py-8 sm:px-8 sm:py-11 lg:grid-cols-[minmax(0,1fr)_450px] lg:gap-x-10 lg:gap-y-6 xl:grid-cols-[minmax(0,1fr)_480px] xl:px-10">
+      <main className={`mx-auto grid w-full gap-9 px-5 py-8 sm:px-8 sm:py-11 lg:gap-x-10 lg:gap-y-6 xl:px-10 ${step === 3 ? "max-w-[1500px] lg:grid-cols-1" : "max-w-[1720px] lg:grid-cols-[minmax(0,1fr)_450px] xl:grid-cols-[minmax(0,1fr)_480px]"}`}>
         <section className="min-w-0">
           {step > 1 && (
             <button
@@ -217,9 +214,23 @@ export function BookingFlow() {
                   <BookingDatePicker value={preferredDate} onChange={setPreferredDate} />
                   <BookingFlexibilityPicker value={form.flexibility} onChange={(value) => updateForm("flexibility", value)} />
                 </div>
-                <div className="mt-5">
+
+                <div className="mt-6 border-t border-brand-line pt-6">
+                  <h3 className="mb-4 text-sm font-bold text-brand-ink">✉️ Contact information</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <BookingField label="Email address">
+                      <input required type="email" autoComplete="email" value={form.email} onChange={(event) => updateForm("email", event.target.value)} placeholder="you@example.com" className={inputClass} />
+                    </BookingField>
+                    <BookingField label="Phone number">
+                      <input required type="tel" autoComplete="tel" value={form.phone} onChange={(event) => updateForm("phone", event.target.value)} placeholder="+82 10 0000 0000" className={inputClass} />
+                    </BookingField>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-brand-muted">Used by MediBridge for booking updates. Your contact details stay protected.</p>
+                </div>
+
+                <div className="mt-6 border-t border-brand-line pt-6">
                   <BookingField label="Note to clinic (optional)">
-                    <textarea value={form.clinicNote} onChange={(event) => updateForm("clinicNote", event.target.value)} placeholder="e.g. I'd prefer a female coordinator, arriving from Shanghai on Aug 10..." rows={3} className={`${inputClass} resize-none`} />
+                    <textarea value={form.clinicNote} onChange={(event) => updateForm("clinicNote", event.target.value)} placeholder="e.g. I would prefer a female coordinator, arriving from Shanghai on Aug 10..." rows={3} className={`${inputClass} resize-none`} />
                   </BookingField>
                 </div>
               </FormCard>
@@ -251,17 +262,58 @@ export function BookingFlow() {
           )}
 
           {step === 3 && (
-            <StepSection title="Review your booking" subtitle="Check every detail before continuing to secure payment.">
-              <FormCard title="✓ Booking summary"><ReviewRow label="Clinic" value={clinicName} /><ReviewRow label="Procedure" value={procedure} /><ReviewRow label="Preferred date" value={formatDate(preferredDate)} /><ReviewRow label="Contact" value={`${form.email} · ${form.phone}`} /></FormCard>
-              <FormCard title="👤 Patient & medical information"><ReviewRow label="Full name" value={form.fullName} /><ReviewRow label="Date of birth" value={formatDate(form.birthDate)} /><ReviewRow label="Country" value={form.country} /><ReviewRow label="Language" value={form.language} /><ReviewRow label="Allergies / conditions" value={form.allergies || "None provided"} /><ReviewRow label="Document" value={documentName || "No document uploaded"} /></FormCard>
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-brand-line bg-brand-cream/55 p-4 text-sm leading-6 text-brand-muted"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-1 h-5 w-5 accent-brand-teal-700" /><span>I confirm that the information above is accurate and can be shared securely with {clinicName}.</span></label>
+            <StepSection title="Review your request" subtitle="Double-check everything below before continuing to secure payment.">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <ReviewCard title="Clinic & procedure" onEdit={() => setStep(1)}>
+                  <ReviewItem label="Clinic" value={clinicName} />
+                  <ReviewItem label="Procedure" value={procedure} />
+                  <ReviewItem label="Preferred date" value={formatDate(preferredDate)} />
+                  <ReviewItem label="Flexibility" value={form.flexibility} />
+                </ReviewCard>
+                <ReviewCard title="Patient details" onEdit={() => setStep(2)}>
+                  <ReviewItem label="Full name" value={form.fullName} />
+                  <ReviewItem label="Country" value={form.country === "China" ? "🇨🇳 China" : form.country} />
+                  <ReviewItem label="Language" value={form.language} />
+                  <ReviewItem label="Contact" value={<span className="text-right">{form.email}<br />{form.phone}</span>} />
+                </ReviewCard>
+              </div>
+
+              <div className="mt-5">
+                <ReviewCard title="Medical information" onEdit={() => setStep(2)}>
+                  <ReviewItem label="Allergies / conditions" value={form.allergies || "None reported"} />
+                  <ReviewItem label="Documents" value={documentName ? <span className="inline-flex rounded-full bg-brand-teal-100 px-3 py-1.5 text-xs font-semibold text-brand-teal-700">📎 {documentName}</span> : "No documents uploaded"} />
+                  <ReviewItem label="Note to clinic" value={form.clinicNote ? "“" + form.clinicNote + "”" : "No note provided"} />
+                </ReviewCard>
+              </div>
+
+              <div className="mt-5 flex gap-4 rounded-2xl border border-brand-line bg-brand-cream p-6 text-sm leading-6 text-brand-muted">
+                <span className="text-xl">ℹ️</span>
+                <div>
+                  <h3 className="font-bold text-brand-teal-900">Secure payment is next</h3>
+                  <p className="mt-1">Review your request carefully, then continue to payment. Your funds will be held securely in escrow and released only after treatment is confirmed.</p>
+                </div>
+              </div>
+
+              <button type="button" onClick={() => void continueFlow()} className="mt-6 flex min-h-15 w-full items-center justify-center rounded-xl bg-brand-teal-700 px-6 text-base font-bold text-white transition hover:bg-brand-teal-900">
+                Continue to payment →
+              </button>
             </StepSection>
           )}
 
           {step === 4 && (
             <StepSection title="Secure payment" subtitle="Your money stays protected in escrow until treatment is complete.">
               <PaymentMethod active={form.paymentMethod === "card"} icon="💳" title="Credit / Debit card" description="Visa, Mastercard, UnionPay, JCB" onClick={() => updateForm("paymentMethod", "card")} />
-              {form.paymentMethod === "card" && <div className="mt-3 rounded-xl border border-brand-line p-5"><BookingField label="Card number"><input value={form.cardNumber} onChange={(event) => updateForm("cardNumber", formatCardNumber(event.target.value))} placeholder="1234 5678 9012 3456" inputMode="numeric" maxLength={19} className={inputClass} /></BookingField><div className="mt-4 grid grid-cols-2 gap-4"><BookingField label="Expiry"><input value={form.expiry} onChange={(event) => updateForm("expiry", event.target.value)} placeholder="MM / YY" maxLength={7} className={inputClass} /></BookingField><BookingField label="CVC"><input value={form.cvc} onChange={(event) => updateForm("cvc", event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="•••" inputMode="numeric" className={inputClass} /></BookingField></div></div>}
+              {form.paymentMethod === "card" && (
+                <div className="mt-3 rounded-xl border border-brand-line p-5">
+                  <BookingField label="Card number">
+                    <input value={form.cardNumber} onChange={(event) => updateForm("cardNumber", formatCardNumber(event.target.value))} placeholder="1234 5678 9012 3456" inputMode="numeric" maxLength={19} className={inputClass} />
+                  </BookingField>
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <BookingField label="Expiry"><input value={form.expiry} onChange={(event) => updateForm("expiry", formatExpiry(event.target.value))} onKeyDown={(event) => { if (event.key === "Backspace" && form.expiry.endsWith("/")) { event.preventDefault(); updateForm("expiry", form.expiry.slice(0, -2)); } }} placeholder="MM / YY" inputMode="numeric" maxLength={5} className={inputClass} /></BookingField>
+                    <BookingField label="CVC"><input value={form.cvc} onChange={(event) => updateForm("cvc", event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="•••" inputMode="numeric" className={inputClass} /></BookingField>
+                  </div>
+                </div>
+              )}
               <div className="mt-3"><PaymentMethod active={form.paymentMethod === "mobile"} icon="📱" title="Alipay / WeChat Pay" description="Popular for patients from China" onClick={() => updateForm("paymentMethod", "mobile")} /></div>
               <EscrowTimeline />
             </StepSection>
@@ -269,7 +321,7 @@ export function BookingFlow() {
 
         </section>
 
-        <BookingSummary clinicSlug={clinicSlug} clinicName={clinicName} procedure={procedure} preferredDate={preferredDate} step={step} onContinue={() => void continueFlow()} />
+        {step !== 3 && <BookingSummary clinicSlug={clinicSlug} clinicName={clinicName} procedure={procedure} preferredDate={preferredDate} step={step} onContinue={() => void continueFlow()} />}
       </main>
     </div>
   );
@@ -303,7 +355,12 @@ function BookingStepper({ currentStep, onStepClick }: { currentStep: number; onS
 function StepSection({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) { return <div className="booking-step-transition"><h1 className="font-serif text-3xl font-semibold text-brand-teal-900 sm:text-4xl">{title}</h1><p className="mt-2 text-sm text-brand-muted sm:text-base">{subtitle}</p><div className="mt-7">{children}</div></div>; }
 function FormCard({ title, children }: { title: string; children: ReactNode }) { return <section className="mb-6 rounded-2xl border border-brand-line bg-white p-6 sm:p-8"><h2 className="mb-6 text-base font-bold text-brand-ink">{title}</h2>{children}</section>; }
 function BookingField({ label, children }: { label: string; children: ReactNode }) { return <label className="block"><span className="mb-2 block text-xs font-semibold text-brand-muted">{label}</span>{children}</label>; }
-function ReviewRow({ label, value }: { label: string; value: string }) { return <div className="flex flex-col gap-1 border-b border-brand-line py-3 first:pt-0 last:border-0 last:pb-0 sm:flex-row sm:justify-between"><span className="text-sm text-brand-muted">{label}</span><b className="text-sm text-brand-ink sm:text-right">{value}</b></div>; }
+function ReviewCard({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
+  return <section className="rounded-2xl border border-brand-line bg-white p-6"><div className="mb-3 flex items-center justify-between"><h2 className="text-xs font-bold uppercase tracking-[0.08em] text-brand-muted">{title}</h2><button type="button" onClick={onEdit} className="text-xs font-bold text-brand-teal-700 hover:underline">Edit</button></div><div>{children}</div></section>;
+}
+function ReviewItem({ label, value }: { label: string; value: ReactNode }) {
+  return <div className="flex flex-col gap-2 border-b border-brand-line py-3 first:pt-0 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"><span className="text-sm text-brand-muted">{label}</span><div className="max-w-[70%] text-sm font-semibold text-brand-ink sm:text-right">{value}</div></div>;
+}
 
 function BookingDatePicker({ label = "Date", value, onChange, defaultMonth }: { label?: string; value: string; onChange: (value: string) => void; defaultMonth?: Date }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -393,11 +450,16 @@ function BookingSelectPicker({ label, value, options, placeholder, onChange }: {
 }
 
 function PaymentMethod({ active, icon, title, description, onClick }: { active: boolean; icon: string; title: string; description: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left ${active ? "border-brand-teal-700" : "border-brand-line"}`}><span className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${active ? "border-brand-teal-700" : "border-brand-line"}`}>{active && <span className="h-2.5 w-2.5 rounded-full bg-brand-teal-700" />}</span><span><b className="block text-sm text-brand-ink">{title}</b><small className="text-brand-muted">{description}</small></span><span className="ml-auto text-2xl">{icon}</span></button>;
+  return <button type="button" onClick={onClick} className={"flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition " + (active ? "border-brand-teal-700 bg-brand-teal-100/30" : "border-brand-line hover:border-brand-teal-500")}><span className={"flex h-5 w-5 items-center justify-center rounded-full border-2 " + (active ? "border-brand-teal-700" : "border-brand-line")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-brand-teal-700" />}</span><span><b className="block text-sm text-brand-ink">{title}</b><small className="text-brand-muted">{description}</small></span><span className="ml-auto text-2xl">{icon}</span></button>;
+}
+
+function EscrowTimeline() {
+  const items = [{ icon: "✓", title: "You pay MediBridge", detail: "Funds are charged securely" }, { icon: "2", title: "Money held in escrow", detail: "Clinic does not receive it yet" }, { icon: "3", title: "You get treated in Korea", detail: "Confirm your procedure is complete" }, { icon: "4", title: "Payment released to clinic", detail: "Only after your confirmation" }];
+  return <section className="mt-5 rounded-xl border border-brand-line p-5"><h2 className="mb-5 text-sm font-bold text-brand-ink">🛡 How your escrow payment works</h2><div className="space-y-4">{items.map((item, index) => { const statusClass = index === 0 ? "bg-emerald-500 text-white" : index === 1 ? "bg-brand-teal-700 text-white" : "bg-brand-line text-brand-muted"; return <div key={item.title} className="flex items-start gap-3"><span className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold " + statusClass}>{item.icon}</span><div><h3 className="text-sm font-semibold text-brand-ink">{item.title}</h3><p className="mt-0.5 text-xs text-brand-muted">{item.detail}</p></div>{index === 1 && <span className="ml-auto rounded-full bg-brand-teal-100 px-2 py-1 text-[10px] font-bold text-brand-teal-700">HELD</span>}</div>; })}</div></section>;
 }
 
 function BookingSummary({ clinicSlug, clinicName, procedure, preferredDate, step, onContinue }: { clinicSlug: string; clinicName: string; procedure: string; preferredDate: string; step: number; onContinue: () => void }) {
-  const buttonLabel = step === 1 ? "Continue to medical info →" : step === 2 ? "Continue to review →" : step === 3 ? "Continue to payment →" : "🔒 Pay $2,520 securely";
+  const buttonLabel = step === 1 ? "Continue to medical info →" : step === 2 ? "Continue to review & submit →" : "🔒 Pay $2,520 securely";
   return (
     <aside className="order-first lg:order-none">
       <div className="sticky top-6 flex min-h-[620px] flex-col overflow-hidden rounded-2xl border border-brand-line bg-white shadow-2xl shadow-brand-teal-900/10">
@@ -450,14 +512,12 @@ function BookingSummary({ clinicSlug, clinicName, procedure, preferredDate, step
 }
 function SummaryRow({ label, value }: { label: string; value: string }) { return <div className="flex justify-between gap-4 text-brand-muted"><span>{label}</span><b className="text-right text-brand-ink">{value}</b></div>; }
 
-function EscrowTimeline() {
-  const items = [{ icon: "✓", title: "You pay MediBridge", detail: "Funds are charged securely" }, { icon: "2", title: "Money held in escrow", detail: "Clinic does not receive it yet" }, { icon: "3", title: "You get treated in Korea", detail: "Confirm your procedure is complete" }, { icon: "4", title: "Payment released to clinic", detail: "Only after your confirmation" }];
-  return <section className="mt-5 rounded-xl border border-brand-line p-5"><h2 className="mb-5 text-sm font-bold text-brand-ink">🛡 How your escrow payment works</h2><div className="space-y-4">{items.map((item, index) => <div key={item.title} className="flex items-start gap-3"><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${index === 0 ? "bg-emerald-500 text-white" : index === 1 ? "bg-brand-teal-700 text-white" : "bg-brand-line text-brand-muted"}`}>{item.icon}</span><div><h3 className="text-sm font-semibold text-brand-ink">{item.title}</h3><p className="mt-0.5 text-xs text-brand-muted">{item.detail}</p></div>{index === 1 && <span className="ml-auto rounded-full bg-brand-teal-100 px-2 py-1 text-[10px] font-bold text-brand-teal-700">HELD</span>}</div>)}</div></section>;
-}
-
 const inputClass = "min-h-14 w-full rounded-xl border border-brand-line bg-white px-4 py-3.5 text-sm text-brand-ink outline-none transition placeholder:text-brand-muted/70 focus:border-brand-teal-500 focus:ring-3 focus:ring-brand-teal-100";
 function formatDate(value: string) { if (!value) return "Not provided"; const [year, month, day] = value.split("-").map(Number); return new Date(year, month - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
 function dateFromInput(value: string) { if (!value) return null; const [year, month, day] = value.split("-").map(Number); return new Date(year, month - 1, day); }
 function toInputDate(year: number, month: number, day: number) { return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`; }
+function formatExpiry(value: string) { const digits = value.replace(/\D/g, "").slice(0, 4); if (digits.length < 2) return digits; if (digits.length === 2) return digits + "/"; return digits.slice(0, 2) + "/" + digits.slice(2); }
+function formatCardNumber(value: string) { return value.replace(/\D/g, "").slice(0, 16).match(/.{1,4}/g)?.join(" ") ?? ""; }
+function isValidEmail(value: string) { const email = value.trim(); const at = email.indexOf("@"); return at > 0 && email.lastIndexOf(".") > at + 1; }
+function isValidPhone(value: string) { return value.replace(/\D/g, "").length >= 7; }
 function getProcedurePrice(procedure: string) { return procedure === "Double Eyelid" ? "$1,200" : procedure === "V-line Contour" ? "$5,500" : "$2,400"; }
-function formatCardNumber(value: string) { return value.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim(); }
