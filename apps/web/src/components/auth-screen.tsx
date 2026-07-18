@@ -63,7 +63,7 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
     localStorage.setItem("memberType", member.memberType);
     localStorage.setItem("memberNick", member.memberNick);
     window.dispatchEvent(new Event("storage"));
-    router.push("/clinics");
+    router.push(member.memberType === "PATIENT" ? "/dashboard/patient" : "/dashboard/clinic");
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
