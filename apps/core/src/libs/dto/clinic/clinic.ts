@@ -46,6 +46,12 @@ export class Clinic {
 
 	@Field(() => Date)
 	updatedAt: Date;
+
+	// Cheapest procedure price for this clinic — only populated by getClinics
+	// (computed via a $lookup into Procedure); getClinic (singular) returns a
+	// plain document and leaves this null since it doesn't join procedures.
+	@Field(() => Float, { nullable: true })
+	startingPrice?: number;
 }
 
 // List + total count (for pagination)

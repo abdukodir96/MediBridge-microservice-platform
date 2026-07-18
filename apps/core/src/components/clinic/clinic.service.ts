@@ -29,7 +29,7 @@ const assertPriceRange = (min?: number, max?: number): void => {
 };
 
 // Sort key per ClinicSort option. PRICE_LOW/PRICE_HIGH sort by the clinic's
-// cheapest procedure (clinicMinPrice), computed via $lookup — see getClinics.
+// cheapest procedure (startingPrice), computed via $lookup — see getClinics.
 // Every entry ends with `_id: 1` as a tiebreaker: without one, documents that
 // tie on the primary key (e.g. many clinics sharing clinicRating: 4.9) have
 // no guaranteed relative order across separate paginated queries, so the
@@ -37,8 +37,8 @@ const assertPriceRange = (min?: number, max?: number): void => {
 const SORT_MAP: Record<ClinicSort, Record<string, 1 | -1>> = {
 	[ClinicSort.TOP_RATED]: { clinicRating: -1, _id: 1 },
 	[ClinicSort.MOST_REVIEWED]: { clinicReviewCount: -1, _id: 1 },
-	[ClinicSort.PRICE_LOW]: { clinicMinPrice: 1, _id: 1 },
-	[ClinicSort.PRICE_HIGH]: { clinicMinPrice: -1, _id: 1 },
+	[ClinicSort.PRICE_LOW]: { startingPrice: 1, _id: 1 },
+	[ClinicSort.PRICE_HIGH]: { startingPrice: -1, _id: 1 },
 };
 
 @Injectable()
@@ -102,45 +102,43 @@ export class ClinicService {
 
 		const skip = (page - 1) * limit;
 
-		const pipeline: any[] = [{ $match: match }];
-
-		// Only join procedures when price data is actually needed — keeps the
-		// common case (no price filter, rating/review sort) a plain query.
-		const needsProcedures =
-			priceMin != null ||
-			priceMax != null ||
-			sort === ClinicSort.PRICE_LOW ||
-			sort === ClinicSort.PRICE_HIGH;
-
-		if (needsProcedures) {
-			pipeline.push({
+		const pipeline: any[] = [
+			{ $match: match },
+			// Every card in the list shows a "from $X" price, so this join always
+			// runs (unlike an earlier version that only joined when a price
+			// filter/sort was requested). Only procedurePriceMin/Max are
+			// projected — the rest of each Procedure doc isn't needed here.
+			{
 				$lookup: {
 					from: this.procedureModel.collection.name,
-					localField: '_id',
-					foreignField: 'procedureClinicId',
+					let: { clinicId: '$_id' },
+					pipeline: [
+						{ $match: { $expr: { $eq: ['$procedureClinicId', '$$clinicId'] } } },
+						{ $project: { _id: 0, procedurePriceMin: 1, procedurePriceMax: 1 } },
+					],
 					as: 'procedures',
 				},
-			});
+			},
+		];
 
-			if (priceMin != null || priceMax != null) {
-				// Overlap with the requested [priceMin, priceMax] window —
-				// a clinic qualifies if any single procedure overlaps it.
-				pipeline.push({
-					$match: {
-						procedures: {
-							$elemMatch: {
-								...(priceMin != null ? { procedurePriceMax: { $gte: priceMin } } : {}),
-								...(priceMax != null ? { procedurePriceMin: { $lte: priceMax } } : {}),
-							},
+		if (priceMin != null || priceMax != null) {
+			// Overlap with the requested [priceMin, priceMax] window — a clinic
+			// qualifies if any single procedure overlaps it.
+			pipeline.push({
+				$match: {
+					procedures: {
+						$elemMatch: {
+							...(priceMin != null ? { procedurePriceMax: { $gte: priceMin } } : {}),
+							...(priceMax != null ? { procedurePriceMin: { $lte: priceMax } } : {}),
 						},
 					},
-				});
-			}
-
-			pipeline.push({
-				$addFields: { clinicMinPrice: { $min: '$procedures.procedurePriceMin' } },
+				},
 			});
 		}
+
+		pipeline.push({
+			$addFields: { startingPrice: { $min: '$procedures.procedurePriceMin' } },
+		});
 
 		const [list, countResult] = await Promise.all([
 			this.clinicModel
@@ -149,7 +147,7 @@ export class ClinicService {
 					{ $sort: SORT_MAP[sort] },
 					{ $skip: skip },
 					{ $limit: limit },
-					{ $unset: ['procedures', 'clinicMinPrice'] },
+					{ $unset: 'procedures' },
 				])
 				.exec(),
 			this.clinicModel.aggregate([...pipeline, { $count: 'total' }]).exec(),

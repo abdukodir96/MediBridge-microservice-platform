@@ -25,6 +25,7 @@ export interface Clinic {
 	clinicRating: number;
 	clinicReviewCount: number;
 	clinicLangs: MemberLang[];
+	startingPrice?: number | null;
 }
 
 export interface ClinicsInquiry {
@@ -63,6 +64,7 @@ export const GET_CLINICS: TypedDocumentNode<GetClinicsData, GetClinicsVars> = gq
 				clinicRating
 				clinicReviewCount
 				clinicLangs
+				startingPrice
 			}
 		}
 	}

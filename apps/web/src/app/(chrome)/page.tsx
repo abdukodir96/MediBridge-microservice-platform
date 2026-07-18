@@ -183,7 +183,8 @@ export default function Home() {
       </section>
 
       {/* ESCROW STRIP */}
-      <div className="relative z-20 mx-6 -mt-6 flex flex-col gap-4 rounded-2xl border border-brand-line bg-white p-5 shadow-xl shadow-brand-teal-900/10 sm:mx-10 sm:-mt-6.5 sm:flex-row sm:items-center sm:p-6">
+      <div className="bg-background px-6 sm:px-10">
+        <div className="relative z-20 -mt-6 flex flex-col gap-4 rounded-2xl border border-brand-line bg-white p-5 shadow-xl shadow-brand-teal-900/10 sm:-mt-6.5 sm:flex-row sm:items-center sm:p-6">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] bg-brand-teal-100">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
             <path
@@ -206,7 +207,8 @@ export default function Home() {
         </div>
         <a href="#" className="whitespace-nowrap text-[13px] font-semibold text-brand-teal-700 sm:ml-auto">
           How escrow works →
-        </a>
+          </a>
+        </div>
       </div>
 
     </div>

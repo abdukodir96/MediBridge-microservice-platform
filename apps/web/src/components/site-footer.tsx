@@ -1,16 +1,15 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { Logo } from "@/components/logo";
+import { useChromeHidden } from "@/components/chrome-visibility";
 
 export function SiteFooter() {
-  const pathname = usePathname();
-  const isAuthPage = pathname === "/login" || pathname === "/signup";
+  const hidden = useChromeHidden();
 
-  if (isAuthPage) return null;
+  if (hidden) return null;
 
   return (
-    <footer className="relative z-10 mt-6.25 flex flex-col gap-12.5 border-t border-brand-line px-7.5 py-12.5 shadow-[0_-8px_16px_-12px_rgba(13,59,59,0.2)] sm:px-12.5 md:flex-row md:justify-between">
+    <footer className="relative z-10 flex flex-col gap-12.5 border-t border-brand-line bg-background px-7.5 pb-12.5 pt-[75px] shadow-[0_-6px_20px_-18px_rgba(13,59,59,0.18)] sm:px-12.5 md:flex-row md:justify-between">
       <div>
         <Logo />
         <p className="mt-[12.5px] max-w-70 text-[16.25px] text-brand-muted">

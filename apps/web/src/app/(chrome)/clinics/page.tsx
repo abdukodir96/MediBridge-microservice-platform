@@ -10,6 +10,7 @@ import { ClinicsFilterPanel, ClinicsSort } from "@/components/clinics-filter-pan
 import { GET_CLINICS, type Clinic } from "@/lib/graphql/clinics";
 import { toBackendSort } from "@/lib/clinic-sort";
 import { toBackendSpecialties, toBackendLangs } from "@/lib/clinic-filters";
+import { titleCaseEnum } from "@/lib/clinic-format";
 
 const CLINICS_PER_PAGE = 6;
 
@@ -158,7 +159,7 @@ function ClinicsPageContent() {
                             key={specialty}
                             className="rounded-full bg-brand-teal-100 px-3 py-1 text-sm font-semibold text-brand-teal-700"
                           >
-                            {specialty.replace(/_/g, " ")}
+                            {titleCaseEnum(specialty)}
                           </span>
                         ))}
                       </div>
@@ -167,6 +168,11 @@ function ClinicsPageContent() {
                           <span className="text-brand-gold">★</span> {clinic.clinicRating.toFixed(1)}
                           <span className="font-normal text-brand-muted">({clinic.clinicReviewCount})</span>
                         </span>
+                        {clinic.startingPrice != null && (
+                          <span className="text-base text-brand-muted">
+                            from <b className="text-brand-teal-900">${clinic.startingPrice.toLocaleString()}</b>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

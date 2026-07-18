@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { NavAuthLinks } from "@/components/nav-auth-links";
+import { useChromeHidden } from "@/components/chrome-visibility";
 
 const navLinks = [
   { href: "/clinics", label: "Find Clinics" },
@@ -14,13 +15,13 @@ const navLinks = [
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const isAuthPage = pathname === "/login" || pathname === "/signup";
   const active = pathname.startsWith("/clinics") ? "Find Clinics" : undefined;
+  const hidden = useChromeHidden();
 
-  if (isAuthPage) return null;
+  if (hidden) return null;
 
   return (
-    <header className="relative z-10 flex items-center justify-between border-b border-brand-line px-6 py-4 shadow-[0_8px_16px_-12px_rgba(13,59,59,0.2)] sm:px-10">
+    <header className="relative z-10 flex items-center justify-between border-b border-brand-line bg-background px-6 py-4 shadow-[0_8px_16px_-12px_rgba(13,59,59,0.2)] sm:px-10">
       <Logo />
       <nav className="hidden items-center gap-17.5 text-[22.5px] font-medium text-brand-muted lg:flex">
         {navLinks.map((link) => (

@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { HideChrome } from "@/components/chrome-visibility";
 
 export default function NotFound() {
   return (
     <main className="flex min-h-screen items-center justify-center overflow-hidden bg-white px-6 py-10">
+      <HideChrome />
       <section className="w-full max-w-[820px] text-center">
         <div className="relative mx-auto h-[340px] w-full bg-[url('/video/bg.gif')] bg-contain bg-center bg-no-repeat sm:h-[460px]">
           <h1 className="absolute inset-x-0 top-2 font-serif text-7xl font-semibold tracking-[0.08em] text-brand-ink sm:top-4 sm:text-8xl">
