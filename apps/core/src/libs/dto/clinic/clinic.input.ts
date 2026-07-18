@@ -1,4 +1,4 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
+import { Field, InputType, Int, Float } from '@nestjs/graphql';
 import {
 	IsNotEmpty,
 	IsOptional,
@@ -6,8 +6,9 @@ import {
 	IsArray,
 	Min,
 	Max,
+	IsEnum,
 } from 'class-validator';
-import { ClinicSpecialty } from '../../enums/clinic.enum';
+import { ClinicSpecialty, ClinicSort } from '../../enums/clinic.enum';
 import { MemberLang } from '../../enums/member.enum';
 
 // Create a clinic
@@ -55,6 +56,21 @@ export class ClinicsInquiry {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	text?: string; // search by name
+
+	@IsOptional()
+	@Min(0)
+	@Field(() => Float, { nullable: true })
+	priceMin?: number;
+
+	@IsOptional()
+	@Min(0)
+	@Field(() => Float, { nullable: true })
+	priceMax?: number;
+
+	@IsOptional()
+	@IsEnum(ClinicSort)
+	@Field(() => ClinicSort, { nullable: true })
+	sort?: ClinicSort;
 
 	@IsOptional()
 	@Min(1)

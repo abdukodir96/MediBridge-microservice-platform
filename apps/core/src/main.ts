@@ -18,6 +18,10 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
+  app.enableCors({
+    origin: true, // dev: any origin; lock down to a real domain in production
+    credentials: true,
+  });
 
   // TCP microservice listener (talks to the Gateway).
   // `inheritAppConfig: true` is required — global pipes/guards/interceptors

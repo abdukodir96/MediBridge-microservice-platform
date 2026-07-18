@@ -38,9 +38,9 @@ const procedures = [
   { name: "Face Contouring (V-line)", detail: "Includes 3D CT consultation", price: "$5,500–7,200" },
 ];
 
-export default async function ClinicProfilePage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const clinicName = clinicNames[slug];
+export default async function ClinicProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const clinicName = clinicNames[id];
   if (!clinicName) notFound();
 
   return (
@@ -72,7 +72,7 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
               <span>📍 Gangnam-gu, Seoul</span>
               <span>🗣 中文 · English · 한국어</span>
             </div>
-            <ClinicProfileStats clinicSlug={slug} />
+            <ClinicProfileStats clinicSlug={id} />
             <div className="mt-5 flex flex-wrap gap-2">
               {["Plastic Surgery", "Rhinoplasty", "Double Eyelid", "JCI Accredited"].map((tag) => (
                 <span key={tag} className="rounded-full bg-brand-teal-100 px-3 py-1.5 text-xs font-semibold text-brand-teal-700">{tag}</span>
@@ -102,11 +102,11 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
             </div>
           </section>
 
-          <ClinicComments clinicSlug={slug} clinicName={clinicName} />
+          <ClinicComments clinicSlug={id} clinicName={clinicName} />
         </div>
 
         <div className="order-first lg:order-none">
-          <ClinicBookingCard clinicSlug={slug} clinicName={clinicName} startingPrice="$2,400" />
+          <ClinicBookingCard clinicSlug={id} clinicName={clinicName} startingPrice="$2,400" />
         </div>
       </main>
 
