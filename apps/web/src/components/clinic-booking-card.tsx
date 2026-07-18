@@ -4,12 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 
-const procedureOptions = ["Rhinoplasty", "Double Eyelid Surgery", "Face Contouring"];
 const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export function ClinicBookingCard({ clinicSlug, clinicName, startingPrice }: { clinicSlug: string; clinicName: string; startingPrice: string }) {
+export type BookingProcedureOption = {
+  _id: string;
+  procedureName: string;
+  procedurePriceMin: number;
+};
+
+export function ClinicBookingCard({
+  clinicSlug,
+  clinicName,
+  startingPrice,
+  procedures,
+}: {
+  clinicSlug: string;
+  clinicName: string;
+  startingPrice: string;
+  procedures: BookingProcedureOption[];
+}) {
   const router = useRouter();
-  const [procedure, setProcedure] = useState("Rhinoplasty");
+  const [procedureId, setProcedureId] = useState(procedures[0]?._id ?? "");
   const [date, setDate] = useState("2026-08-12");
   const [procedureOpen, setProcedureOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -41,8 +56,16 @@ export function ClinicBookingCard({ clinicSlug, clinicName, startingPrice }: { c
     return false;
   };
 
+  const selectedProcedure = procedures.find((item) => item._id === procedureId);
+
   const requestBooking = () => {
-    const query = new URLSearchParams({ clinic: clinicSlug, clinicName, procedure, date });
+    const query = new URLSearchParams({
+      clinic: clinicSlug,
+      clinicName,
+      procedureId,
+      procedureName: selectedProcedure?.procedureName ?? "",
+      date,
+    });
     router.push(`/booking/new?${query.toString()}`);
   };
 
@@ -73,7 +96,7 @@ export function ClinicBookingCard({ clinicSlug, clinicName, startingPrice }: { c
           aria-expanded={procedureOpen}
           className="mt-2 flex w-full items-center justify-between text-left text-sm font-semibold text-brand-ink outline-none"
         >
-          <span>{procedure}</span>
+          <span>{selectedProcedure?.procedureName ?? "Select a procedure"}</span>
           <span className={`text-xs text-brand-teal-700 transition-transform duration-300 ${procedureOpen ? "rotate-180" : ""}`}>▼</span>
         </button>
         <div
@@ -86,25 +109,25 @@ export function ClinicBookingCard({ clinicSlug, clinicName, startingPrice }: { c
               : "pointer-events-none -translate-y-2 scale-y-90 opacity-0"
           }`}
         >
-          {procedureOptions.map((option) => (
+          {procedures.map((option) => (
             <button
-              key={option}
+              key={option._id}
               type="button"
               role="option"
-              aria-selected={procedure === option}
+              aria-selected={procedureId === option._id}
               tabIndex={procedureOpen ? 0 : -1}
               onClick={() => {
-                setProcedure(option);
+                setProcedureId(option._id);
                 setProcedureOpen(false);
               }}
               className={`flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm transition ${
-                procedure === option
+                procedureId === option._id
                   ? "bg-brand-teal-100 font-semibold text-brand-teal-700"
                   : "text-brand-ink hover:bg-brand-cream"
               }`}
             >
-              <span>{option}</span>
-              {procedure === option && <span>✓</span>}
+              <span>{option.procedureName}</span>
+              {procedureId === option._id && <span>✓</span>}
             </button>
           ))}
         </div>

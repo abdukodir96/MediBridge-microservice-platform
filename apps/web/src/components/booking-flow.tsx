@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Swal from "sweetalert2";
+import { useMutation } from "@apollo/client/react";
+import { CREATE_BOOKING } from "@/lib/graphql/bookings";
 
-const steps = ["Details", "Medical info", "Review & Submit", "Payment"];
+const steps = ["Details", "Medical info", "Review & Submit"];
 const countries = ["Uzbekistan", "South Korea", "China", "Japan", "United States", "Other"];
 const languages = ["English", "中文 (Chinese)", "日本語 (Japanese)", "한국어 (Korean)", "O‘zbek tili"];
 const flexibilityOptions = ["Exact date only", "± 3 days is fine", "± 1 week is fine", "My dates are flexible"];
@@ -22,15 +24,11 @@ type FormState = {
   allergies: string;
   flexibility: string;
   clinicNote: string;
-  paymentMethod: "card" | "mobile";
-  cardNumber: string;
-  expiry: string;
-  cvc: string;
 };
 
 type BookingDraft = {
   step?: number;
-  procedure?: string;
+  procedureName?: string;
   preferredDate?: string;
   form?: Partial<FormState>;
   documentName?: string;
@@ -46,24 +44,34 @@ const initialForm: FormState = {
   allergies: "",
   flexibility: "",
   clinicNote: "",
-  paymentMethod: "card",
-  cardNumber: "",
-  expiry: "",
-  cvc: "",
 };
 
 export function BookingFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const clinicSlug = searchParams.get("clinic") || "seoul-line-clinic";
-  const clinicName = searchParams.get("clinicName") || "Seoul Line Clinic";
-  const draftKey = `medibridge-booking-draft:${clinicSlug}`;
-  const [procedure, setProcedure] = useState(searchParams.get("procedure") || "");
+  const clinicId = searchParams.get("clinic") || "";
+  const clinicName = searchParams.get("clinicName") || "";
+  const procedureId = searchParams.get("procedureId") || "";
+  const draftKey = `medibridge-booking-draft:${clinicId}`;
+  const [procedureName, setProcedureName] = useState(searchParams.get("procedureName") || "");
   const [preferredDate, setPreferredDate] = useState(searchParams.get("date") || "");
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(initialForm);
   const [documentName, setDocumentName] = useState("blood_test_2026.pdf");
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [createBooking, { loading: submitting, error: submitError }] = useMutation(CREATE_BOOKING);
+
+  useEffect(() => {
+    if (!localStorage.getItem("accessToken")) {
+      void Swal.fire({
+        icon: "info",
+        title: "Please, login first",
+        text: "You need to be logged in to request a booking.",
+        confirmButtonText: "Go to login",
+        confirmButtonColor: "#125453",
+      }).then(() => router.push("/login"));
+    }
+  }, [router]);
 
   useEffect(() => {
     let draft: BookingDraft | null = null;
@@ -76,11 +84,11 @@ export function BookingFlow() {
 
     const restoreFrame = window.requestAnimationFrame(() => {
       if (draft) {
-        if (typeof draft.procedure === "string") setProcedure(draft.procedure);
+        if (typeof draft.procedureName === "string") setProcedureName(draft.procedureName);
         if (typeof draft.preferredDate === "string") setPreferredDate(draft.preferredDate);
         if (draft.form) setForm((current) => ({ ...current, ...draft.form }));
         if (typeof draft.documentName === "string") setDocumentName(draft.documentName);
-        if (typeof draft.step === "number" && draft.step >= 1 && draft.step <= 4) setStep(draft.step);
+        if (typeof draft.step === "number" && draft.step >= 1 && draft.step <= 3) setStep(draft.step);
       }
       setDraftLoaded(true);
     });
@@ -90,9 +98,9 @@ export function BookingFlow() {
 
   useEffect(() => {
     if (!draftLoaded) return;
-    const draft: BookingDraft = { step, procedure, preferredDate, form, documentName };
+    const draft: BookingDraft = { step, procedureName, preferredDate, form, documentName };
     sessionStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [documentName, draftKey, draftLoaded, form, preferredDate, procedure, step]);
+  }, [documentName, draftKey, draftLoaded, form, preferredDate, procedureName, step]);
 
   const updateForm = <Key extends keyof FormState>(key: Key, value: FormState[Key]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -105,10 +113,40 @@ export function BookingFlow() {
     confirmButtonColor: "#125453",
   });
 
+  const submitBooking = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      await createBooking({
+        variables: {
+          input: {
+            bookingClinicId: clinicId,
+            bookingProcedureId: procedureId,
+            bookingPreferredDate: preferredDate,
+            bookingNote: form.clinicNote || undefined,
+          },
+        },
+      });
+
+      // Only clear the draft once the request actually succeeded — on
+      // failure (e.g. a dropped connection) the patient's filled-in form
+      // must still be there when they retry.
+      sessionStorage.removeItem(draftKey);
+      router.push("/dashboard?submitted=true");
+    } catch {
+      // error is exposed via the mutation's `error` state and rendered
+      // near the submit button; draft stays intact for a retry.
+    }
+  };
+
   const continueFlow = async () => {
     if (step === 1) {
       const missingFields = [
-        !procedure.trim() && "procedure",
+        !procedureName.trim() && "procedure",
         !preferredDate && "preferred date",
         !form.flexibility && "date flexibility",
         !form.email.trim() && "email address",
@@ -133,23 +171,11 @@ export function BookingFlow() {
         return;
       }
     }
-    if (step === 4) {
-      if (form.paymentMethod === "card" && (!form.cardNumber.trim() || !form.expiry.trim() || !form.cvc.trim())) {
-        await showValidation("Enter your card number, expiry date, and CVC.");
-        return;
-      }
-      await Swal.fire({
-        icon: "success",
-        title: "Booking confirmed",
-        text: clinicName + " received your booking request. Your payment is protected by escrow.",
-        confirmButtonText: "View clinic",
-        confirmButtonColor: "#125453",
-      });
-      sessionStorage.removeItem(draftKey);
-      router.push("/clinics/" + clinicSlug);
+    if (step === 3) {
+      await submitBooking();
       return;
     }
-    setStep((current) => Math.min(4, current + 1));
+    setStep((current) => Math.min(3, current + 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -188,26 +214,10 @@ export function BookingFlow() {
               <FormCard title="🩺 Procedure">
                 <BookingField label="Selected procedure">
                   <div className={`${inputClass} flex items-center justify-between gap-4`}>
-                    <span className={procedure ? "font-medium" : "text-brand-muted/70"}>{procedure || "Select a procedure"}</span>
-                    {procedure && <span className="shrink-0 text-brand-muted">from {getProcedurePrice(procedure)}</span>}
+                    <span className={procedureName ? "font-medium" : "text-brand-muted/70"}>{procedureName || "Select a procedure"}</span>
                   </div>
                 </BookingField>
-                <p className="mt-2 text-xs leading-5 text-brand-muted">Carried over from Seoul Line Clinic&apos;s profile — change it below if needed.</p>
-                <div className="mt-5">
-                  <p className="mb-3 text-xs font-semibold text-brand-muted">Other procedures at this clinic</p>
-                  <div className="flex flex-wrap gap-2">
-                    {["Rhinoplasty", "Double Eyelid", "V-line Contour"].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => setProcedure(option)}
-                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${procedure === option ? "border-brand-teal-700 bg-brand-teal-100 text-brand-teal-900" : "border-brand-line bg-white text-brand-muted hover:border-brand-teal-500 hover:text-brand-teal-900"}`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <p className="mt-2 text-xs leading-5 text-brand-muted">Carried over from {clinicName || "the clinic"}&apos;s profile — go back to change it.</p>
               </FormCard>
               <FormCard title="📅 Preferred date">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -262,11 +272,11 @@ export function BookingFlow() {
           )}
 
           {step === 3 && (
-            <StepSection title="Review your request" subtitle="Double-check everything below before continuing to secure payment.">
+            <StepSection title="Review your request" subtitle="Double-check everything below before sending it to the clinic.">
               <div className="grid gap-5 lg:grid-cols-2">
                 <ReviewCard title="Clinic & procedure" onEdit={() => setStep(1)}>
                   <ReviewItem label="Clinic" value={clinicName} />
-                  <ReviewItem label="Procedure" value={procedure} />
+                  <ReviewItem label="Procedure" value={procedureName} />
                   <ReviewItem label="Preferred date" value={formatDate(preferredDate)} />
                   <ReviewItem label="Flexibility" value={form.flexibility} />
                 </ReviewCard>
@@ -289,39 +299,31 @@ export function BookingFlow() {
               <div className="mt-5 flex gap-4 rounded-2xl border border-brand-line bg-brand-cream p-6 text-sm leading-6 text-brand-muted">
                 <span className="text-xl">ℹ️</span>
                 <div>
-                  <h3 className="font-bold text-brand-teal-900">Secure payment is next</h3>
-                  <p className="mt-1">Review your request carefully, then continue to payment. Your funds will be held securely in escrow and released only after treatment is confirmed.</p>
+                  <h3 className="font-bold text-brand-teal-900">Sent directly to the clinic</h3>
+                  <p className="mt-1">The clinic will review your request and confirm availability. You&apos;ll pay securely — held in escrow — only after they confirm.</p>
                 </div>
               </div>
 
-              <button type="button" onClick={() => void continueFlow()} className="mt-6 flex min-h-15 w-full items-center justify-center rounded-xl bg-brand-teal-700 px-6 text-base font-bold text-white transition hover:bg-brand-teal-900">
-                Continue to payment →
-              </button>
-            </StepSection>
-          )}
-
-          {step === 4 && (
-            <StepSection title="Secure payment" subtitle="Your money stays protected in escrow until treatment is complete.">
-              <PaymentMethod active={form.paymentMethod === "card"} icon="💳" title="Credit / Debit card" description="Visa, Mastercard, UnionPay, JCB" onClick={() => updateForm("paymentMethod", "card")} />
-              {form.paymentMethod === "card" && (
-                <div className="mt-3 rounded-xl border border-brand-line p-5">
-                  <BookingField label="Card number">
-                    <input value={form.cardNumber} onChange={(event) => updateForm("cardNumber", formatCardNumber(event.target.value))} placeholder="1234 5678 9012 3456" inputMode="numeric" maxLength={19} className={inputClass} />
-                  </BookingField>
-                  <div className="mt-4 grid grid-cols-2 gap-4">
-                    <BookingField label="Expiry"><input value={form.expiry} onChange={(event) => updateForm("expiry", formatExpiry(event.target.value))} onKeyDown={(event) => { if (event.key === "Backspace" && form.expiry.endsWith("/")) { event.preventDefault(); updateForm("expiry", form.expiry.slice(0, -2)); } }} placeholder="MM / YY" inputMode="numeric" maxLength={5} className={inputClass} /></BookingField>
-                    <BookingField label="CVC"><input value={form.cvc} onChange={(event) => updateForm("cvc", event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="•••" inputMode="numeric" className={inputClass} /></BookingField>
-                  </div>
-                </div>
+              {submitError && (
+                <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+                  {submitError.message}
+                </p>
               )}
-              <div className="mt-3"><PaymentMethod active={form.paymentMethod === "mobile"} icon="📱" title="Alipay / WeChat Pay" description="Popular for patients from China" onClick={() => updateForm("paymentMethod", "mobile")} /></div>
-              <EscrowTimeline />
+
+              <button
+                type="button"
+                onClick={() => void continueFlow()}
+                disabled={submitting}
+                className="mt-6 flex min-h-15 w-full items-center justify-center rounded-xl bg-brand-teal-700 px-6 text-base font-bold text-white transition hover:bg-brand-teal-900 disabled:opacity-60"
+              >
+                {submitting ? "Sending request…" : "Submit booking request →"}
+              </button>
             </StepSection>
           )}
 
         </section>
 
-        {step !== 3 && <BookingSummary clinicSlug={clinicSlug} clinicName={clinicName} procedure={procedure} preferredDate={preferredDate} step={step} onContinue={() => void continueFlow()} />}
+        {step !== 3 && <BookingSummary clinicSlug={clinicId} clinicName={clinicName} procedure={procedureName} preferredDate={preferredDate} step={step} onContinue={() => void continueFlow()} />}
       </main>
     </div>
   );
@@ -449,17 +451,8 @@ function BookingSelectPicker({ label, value, options, placeholder, onChange }: {
   );
 }
 
-function PaymentMethod({ active, icon, title, description, onClick }: { active: boolean; icon: string; title: string; description: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={"flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition " + (active ? "border-brand-teal-700 bg-brand-teal-100/30" : "border-brand-line hover:border-brand-teal-500")}><span className={"flex h-5 w-5 items-center justify-center rounded-full border-2 " + (active ? "border-brand-teal-700" : "border-brand-line")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-brand-teal-700" />}</span><span><b className="block text-sm text-brand-ink">{title}</b><small className="text-brand-muted">{description}</small></span><span className="ml-auto text-2xl">{icon}</span></button>;
-}
-
-function EscrowTimeline() {
-  const items = [{ icon: "✓", title: "You pay MediBridge", detail: "Funds are charged securely" }, { icon: "2", title: "Money held in escrow", detail: "Clinic does not receive it yet" }, { icon: "3", title: "You get treated in Korea", detail: "Confirm your procedure is complete" }, { icon: "4", title: "Payment released to clinic", detail: "Only after your confirmation" }];
-  return <section className="mt-5 rounded-xl border border-brand-line p-5"><h2 className="mb-5 text-sm font-bold text-brand-ink">🛡 How your escrow payment works</h2><div className="space-y-4">{items.map((item, index) => { const statusClass = index === 0 ? "bg-emerald-500 text-white" : index === 1 ? "bg-brand-teal-700 text-white" : "bg-brand-line text-brand-muted"; return <div key={item.title} className="flex items-start gap-3"><span className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold " + statusClass}>{item.icon}</span><div><h3 className="text-sm font-semibold text-brand-ink">{item.title}</h3><p className="mt-0.5 text-xs text-brand-muted">{item.detail}</p></div>{index === 1 && <span className="ml-auto rounded-full bg-brand-teal-100 px-2 py-1 text-[10px] font-bold text-brand-teal-700">HELD</span>}</div>; })}</div></section>;
-}
-
 function BookingSummary({ clinicSlug, clinicName, procedure, preferredDate, step, onContinue }: { clinicSlug: string; clinicName: string; procedure: string; preferredDate: string; step: number; onContinue: () => void }) {
-  const buttonLabel = step === 1 ? "Continue to medical info →" : step === 2 ? "Continue to review & submit →" : "🔒 Pay $2,520 securely";
+  const buttonLabel = step === 1 ? "Continue to medical info →" : "Continue to review & submit →";
   return (
     <aside className="order-first lg:order-none">
       <div className="sticky top-6 flex min-h-[620px] flex-col overflow-hidden rounded-2xl border border-brand-line bg-white shadow-2xl shadow-brand-teal-900/10">
@@ -471,28 +464,14 @@ function BookingSummary({ clinicSlug, clinicName, procedure, preferredDate, step
           </div>
         </div>
 
-        {step === 1 ? (
-          <div className="space-y-5 p-7 text-base">
-            <SummaryRow label="Procedure" value={procedure || "Not selected"} />
-            <SummaryRow label="Preferred date" value={formatDate(preferredDate)} />
-            <div className="flex justify-between gap-4 text-brand-muted">
-              <span>Est. price</span>
-              <em className="text-right text-sm font-semibold text-brand-muted">shown after clinic confirms</em>
-            </div>
+        <div className="space-y-5 p-7 text-base">
+          <SummaryRow label="Procedure" value={procedure || "Not selected"} />
+          <SummaryRow label="Preferred date" value={formatDate(preferredDate)} />
+          <div className="flex justify-between gap-4 text-brand-muted">
+            <span>Est. price</span>
+            <em className="text-right text-sm font-semibold text-brand-muted">shown after clinic confirms</em>
           </div>
-        ) : (
-          <div className="space-y-4 p-7 text-base">
-            <SummaryRow label="Procedure" value={procedure || "Not selected"} />
-            <SummaryRow label="Preferred date" value={formatDate(preferredDate)} />
-            <SummaryRow label="Est. recovery" value="7 days" />
-            <SummaryRow label="Procedure fee" value="$2,400" />
-            <SummaryRow label="Platform fee" value="$120" />
-            <div className="flex items-end justify-between border-t border-brand-line pt-5">
-              <b>Total</b>
-              <strong className="font-serif text-3xl text-brand-teal-900">$2,520</strong>
-            </div>
-          </div>
-        )}
+        </div>
 
         <button type="button" onClick={onContinue} className="mx-7 mb-3 mt-auto min-h-15 w-[calc(100%-3.5rem)] rounded-xl bg-brand-teal-700 px-6 text-base font-bold text-white transition hover:bg-brand-teal-900">
           {buttonLabel}
@@ -501,11 +480,7 @@ function BookingSummary({ clinicSlug, clinicName, procedure, preferredDate, step
           ← Cancel booking
         </Link>
 
-        {step === 1 ? (
-          <div className="mx-7 mb-7 flex gap-2 border-t border-brand-line pt-5 text-sm leading-6 text-brand-muted">ℹ️ <span>Exact pricing is confirmed by the clinic based on your procedure details — you won&apos;t be charged at this step.</span></div>
-        ) : (
-          <div className="mx-7 mb-7 flex gap-2 rounded-xl bg-brand-teal-100 p-5 text-sm leading-6 text-brand-teal-900">🛡 <span>Your payment is held in secure escrow and released only after treatment is confirmed.</span></div>
-        )}
+        <div className="mx-7 mb-7 flex gap-2 border-t border-brand-line pt-5 text-sm leading-6 text-brand-muted">ℹ️ <span>Exact pricing is confirmed by the clinic based on your procedure details — you won&apos;t be charged at this step.</span></div>
       </div>
     </aside>
   );
@@ -516,8 +491,5 @@ const inputClass = "min-h-14 w-full rounded-xl border border-brand-line bg-white
 function formatDate(value: string) { if (!value) return "Not provided"; const [year, month, day] = value.split("-").map(Number); return new Date(year, month - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
 function dateFromInput(value: string) { if (!value) return null; const [year, month, day] = value.split("-").map(Number); return new Date(year, month - 1, day); }
 function toInputDate(year: number, month: number, day: number) { return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`; }
-function formatExpiry(value: string) { const digits = value.replace(/\D/g, "").slice(0, 4); if (digits.length < 2) return digits; if (digits.length === 2) return digits + "/"; return digits.slice(0, 2) + "/" + digits.slice(2); }
-function formatCardNumber(value: string) { return value.replace(/\D/g, "").slice(0, 16).match(/.{1,4}/g)?.join(" ") ?? ""; }
 function isValidEmail(value: string) { const email = value.trim(); const at = email.indexOf("@"); return at > 0 && email.lastIndexOf(".") > at + 1; }
 function isValidPhone(value: string) { return value.replace(/\D/g, "").length >= 7; }
-function getProcedurePrice(procedure: string) { return procedure === "Double Eyelid" ? "$1,200" : procedure === "V-line Contour" ? "$5,500" : "$2,400"; }

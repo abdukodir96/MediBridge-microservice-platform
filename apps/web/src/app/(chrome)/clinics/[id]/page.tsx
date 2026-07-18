@@ -104,7 +104,16 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
 				</div>
 
 				<div className="order-first lg:order-none">
-					<ClinicBookingCard clinicSlug={id} clinicName={clinic.clinicName} startingPrice={startingPrice} />
+					<ClinicBookingCard
+						clinicSlug={id}
+						clinicName={clinic.clinicName}
+						startingPrice={startingPrice}
+						procedures={procedures.map((p) => ({
+							_id: p._id,
+							procedureName: p.procedureName,
+							procedurePriceMin: p.procedurePriceMin,
+						}))}
+					/>
 				</div>
 			</main>
 		</div>
