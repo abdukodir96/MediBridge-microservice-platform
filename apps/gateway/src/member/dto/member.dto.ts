@@ -124,3 +124,11 @@ export class LoginInput {
 	@Field(() => String)
 	memberPassword: string;
 }
+
+@InputType()
+export class UpdateMemberEmailInput {
+	@IsNotEmpty()
+	@IsEmail()
+	@Field(() => String)
+	memberEmail: string;
+}

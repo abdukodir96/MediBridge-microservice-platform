@@ -7,7 +7,11 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Member } from '../../libs/dto/member/member';
-import { MemberInput, LoginInput } from '../../libs/dto/member/member.input';
+import {
+	MemberInput,
+	LoginInput,
+	UpdateMemberEmailInput,
+} from '../../libs/dto/member/member.input';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { AuthService } from '../auth/auth.service';
 import { comparePassword } from '../../libs/config';
@@ -97,5 +101,34 @@ export class MemberService {
 		const member = await this.memberModel.findById(memberId).exec();
 		if (!member) throw new NotFoundException('Member not found');
 		return member;
+	}
+
+	public async updateEmail(
+		memberId: ObjectId,
+		input: UpdateMemberEmailInput,
+	): Promise<Member> {
+		const memberEmail = input.memberEmail.trim().toLowerCase();
+
+		try {
+			const member = await this.memberModel
+				.findByIdAndUpdate(
+					memberId,
+					{ $set: { memberEmail } },
+					{ new: true, runValidators: true },
+				)
+				.exec();
+
+			if (!member) throw new NotFoundException('Member not found');
+			return member;
+		} catch (err) {
+			if (err instanceof NotFoundException) throw err;
+
+			const error = err as { code?: number };
+			if (error.code === 11000) {
+				throw new BadRequestException('This email is already registered');
+			}
+
+			throw new InternalServerErrorException('Email update failed');
+		}
 	}
 }

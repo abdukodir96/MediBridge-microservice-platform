@@ -33,7 +33,7 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col bg-white">
       {/* HERO */}
-      <section className="relative isolate min-h-[calc(100svh-78px)] overflow-hidden px-6 py-16 sm:px-10 sm:py-20">
+      <section className="relative isolate z-20 min-h-[calc(100svh-78px)] overflow-visible px-6 py-16 sm:px-10 sm:py-20">
         <Image
           src="/doctor/doctor.jpg"
           alt=""

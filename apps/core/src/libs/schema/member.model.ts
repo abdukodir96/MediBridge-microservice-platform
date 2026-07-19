@@ -24,6 +24,8 @@ const MemberSchema = new Schema(
 			required: true,
 			unique: true,
 			index: true,
+			trim: true,
+			lowercase: true,
 		},
 		memberPassword: {
 			type: String,

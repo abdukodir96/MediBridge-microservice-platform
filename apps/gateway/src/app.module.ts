@@ -4,6 +4,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { MemberResolver } from './member/member.resolver';
+import { GatewayAuthGuard } from './auth/gateway-auth.guard';
 
 @Module({
 	imports: [
@@ -30,6 +31,6 @@ import { MemberResolver } from './member/member.resolver';
 			},
 		]),
 	],
-	providers: [MemberResolver],
+	providers: [MemberResolver, GatewayAuthGuard],
 })
 export class AppModule {}

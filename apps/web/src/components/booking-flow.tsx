@@ -62,7 +62,7 @@ export function BookingFlow() {
   const [createBooking, { loading: submitting, error: submitError }] = useMutation(CREATE_BOOKING);
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) {
+    if (process.env.NODE_ENV !== "development" && !localStorage.getItem("accessToken")) {
       void Swal.fire({
         icon: "info",
         title: "Please, login first",
@@ -116,6 +116,16 @@ export function BookingFlow() {
   const submitBooking = async () => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
+      if (process.env.NODE_ENV === "development") {
+        await Swal.fire({
+          icon: "info",
+          title: "Preview mode",
+          text: "The booking flow is available for testing, but no real request is sent without login.",
+          confirmButtonColor: "#125453",
+        });
+        return;
+      }
+
       router.push("/login");
       return;
     }

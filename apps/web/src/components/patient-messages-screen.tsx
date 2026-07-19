@@ -196,8 +196,8 @@ export function PatientMessagesScreen() {
   };
 
   return (
-    <main className="flex-1 bg-white py-6 lg:py-10">
-      <div className="grid min-h-[720px] w-full lg:h-[calc(100svh-150px)] lg:min-h-[680px] lg:max-h-[820px] overflow-hidden border-y border-brand-line bg-white shadow-[0_18px_50px_rgba(13,59,59,0.08)] lg:grid-cols-[310px_minmax(0,1fr)]">
+    <main className="flex-1 bg-white py-4 lg:py-5">
+      <div className="grid min-h-[720px] w-full lg:h-[calc(100svh-150px)] lg:min-h-[680px] lg:max-h-[820px] overflow-hidden border border-brand-line bg-white lg:grid-cols-[310px_minmax(0,1fr)]">
         <PatientMessagesSidebar profileImage={profileImage} />
 
         <div className="grid min-h-0 min-w-0 overflow-hidden md:grid-cols-[380px_minmax(0,1fr)]">
@@ -419,7 +419,7 @@ function PatientMessagesSidebar({ profileImage }: { profileImage: string }) {
       </nav>
 
       <div className="hidden border-t border-brand-line p-5 lg:block">
-        <div className="flex items-center gap-3">
+        <Link href="/dashboard/profile" className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-brand-teal-100">
           <Image
             src={profileImage}
             alt="Wang Lei"
@@ -431,7 +431,7 @@ function PatientMessagesSidebar({ profileImage }: { profileImage: string }) {
             <p className="text-sm font-bold text-brand-ink">Wang Lei</p>
             <p className="mt-0.5 text-xs text-brand-muted">Patient · 🇨🇳</p>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

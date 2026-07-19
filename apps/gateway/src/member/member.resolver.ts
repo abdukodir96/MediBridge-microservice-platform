@@ -1,8 +1,18 @@
-import { Inject } from '@nestjs/common';
+import { Inject, UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { Member, MemberInput, LoginInput } from './dto/member.dto';
+import {
+	Member,
+	MemberInput,
+	LoginInput,
+	UpdateMemberEmailInput,
+} from './dto/member.dto';
+import {
+	GatewayAuthGuard,
+	type GatewayAuthMember,
+} from '../auth/gateway-auth.guard';
+import { AuthMember } from '../auth/auth-member.decorator';
 
 // The TCP transport JSON-serializes the RPC response, which turns Date
 // fields into ISO strings — but the GraphQL DateTime scalar's serialize()
@@ -34,6 +44,35 @@ export class MemberResolver {
 		console.log('Gateway: login → TCP → Core');
 		const result = await firstValueFrom(
 			this.coreClient.send({ cmd: 'member.login' }, input),
+		);
+		return toMember(result);
+	}
+
+	@Query(() => Member)
+	@UseGuards(GatewayAuthGuard)
+	public async getMyProfile(
+		@AuthMember() authMember: GatewayAuthMember,
+	): Promise<Member> {
+		const result = await firstValueFrom(
+			this.coreClient.send(
+				{ cmd: 'member.getMyProfile' },
+				authMember._id,
+			),
+		);
+		return toMember(result);
+	}
+
+	@Mutation(() => Member)
+	@UseGuards(GatewayAuthGuard)
+	public async updateMyEmail(
+		@AuthMember() authMember: GatewayAuthMember,
+		@Args('input') input: UpdateMemberEmailInput,
+	): Promise<Member> {
+		const result = await firstValueFrom(
+			this.coreClient.send(
+				{ cmd: 'member.updateMyEmail' },
+				{ memberId: authMember._id, input },
+			),
 		);
 		return toMember(result);
 	}

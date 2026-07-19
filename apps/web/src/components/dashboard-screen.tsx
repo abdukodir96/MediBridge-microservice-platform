@@ -95,8 +95,8 @@ export function DashboardScreen({ role }: { role: DashboardRole }) {
   const profileImage = useProfileImage();
 
   return (
-    <main className="flex-1 bg-white py-6 lg:py-10">
-      <div className="grid min-h-[650px] w-full overflow-hidden border-y border-brand-line bg-white shadow-[0_18px_50px_rgba(13,59,59,0.08)] lg:grid-cols-[310px_minmax(0,1fr)]">
+    <main className="flex-1 bg-white py-4 lg:py-5">
+      <div className="grid min-h-[650px] w-full overflow-hidden border border-brand-line bg-white lg:grid-cols-[310px_minmax(0,1fr)]">
         <DashboardSidebar role={role} navigation={navigation} profileImage={profileImage} />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -180,7 +180,7 @@ function DashboardSidebar({
       </nav>
 
       <div className="hidden border-t border-brand-line p-5 lg:block">
-        <div className="flex items-center gap-3">
+        <Link href={isPatient ? "/dashboard/profile" : "/dashboard/clinic"} className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-brand-teal-100">
           <Image
             src={profileImage}
             alt={isPatient ? "Wang Lei" : "Seoul Line Clinic"}
@@ -196,7 +196,7 @@ function DashboardSidebar({
               {isPatient ? "Patient · 🇨🇳" : "Clinic · Top Rated"}
             </p>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );
@@ -205,14 +205,10 @@ function DashboardSidebar({
 function PatientBookings() {
   return (
     <section className="mt-9" id="bookings">
-      <div className="mb-4 flex items-center justify-between gap-4">
+      <div className="mb-4">
         <h2 className="text-lg font-bold text-brand-ink">Upcoming bookings</h2>
-        <a href="#bookings" className="group text-sm font-semibold text-brand-teal-700">
-          View all{" "}
-          <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-        </a>
       </div>
-      <div className="space-y-3">
+      <div className="max-h-[340px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
         {patientBookings.map((booking) => (
           <article
             key={booking.clinic}

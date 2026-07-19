@@ -10,17 +10,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type MemberType = "PATIENT" | "CLINIC";
-type AuthMember = { _id: string; memberNick: string; memberType: MemberType; accessToken: string };
+type AuthMember = { _id: string; memberEmail: string; memberNick: string; memberType: MemberType; accessToken: string };
 
 const LOGIN: TypedDocumentNode<{ login: AuthMember }, { input: { memberEmail: string; memberPassword: string } }> = gql`
   mutation Login($input: LoginInput!) {
-    login(input: $input) { _id memberNick memberType accessToken }
+    login(input: $input) { _id memberEmail memberNick memberType accessToken }
   }
 `;
 
 const SIGNUP: TypedDocumentNode<{ signup: AuthMember }, { input: { memberEmail: string; memberPassword: string; memberNick: string; memberPhone: string; memberType: MemberType; memberLang: "EN" } }> = gql`
   mutation Signup($input: MemberInput!) {
-    signup(input: $input) { _id memberNick memberType accessToken }
+    signup(input: $input) { _id memberEmail memberNick memberType accessToken }
   }
 `;
 
@@ -61,6 +61,7 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
   const finishAuth = (member: AuthMember) => {
     localStorage.setItem("accessToken", member.accessToken);
     localStorage.setItem("memberType", member.memberType);
+    localStorage.setItem("memberEmail", member.memberEmail);
     localStorage.setItem("memberNick", member.memberNick);
     window.dispatchEvent(new Event("storage"));
     router.push(member.memberType === "PATIENT" ? "/dashboard/patient" : "/dashboard/clinic");

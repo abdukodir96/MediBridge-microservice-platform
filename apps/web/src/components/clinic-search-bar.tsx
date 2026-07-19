@@ -49,7 +49,7 @@ export function ClinicSearchBar({
   return (
     <form
       onSubmit={submitSearch}
-      className={`flex flex-col divide-y divide-brand-line border border-brand-line bg-white shadow-brand-teal-900/8 sm:flex-row sm:divide-x sm:divide-y-0 ${
+      className={`relative z-50 flex flex-col divide-y divide-brand-line border border-brand-line bg-white shadow-brand-teal-900/8 sm:flex-row sm:divide-x sm:divide-y-0 ${
         isHero
           ? "mb-4 max-w-5xl rounded-[20px] p-5 shadow-xl"
           : "max-w-5xl rounded-2xl p-2 shadow-lg"
@@ -147,7 +147,7 @@ function SearchSelect({
         role="listbox"
         aria-label={label}
         aria-hidden={!open}
-        className={`absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-xl border border-brand-line bg-white p-1.5 shadow-2xl shadow-brand-teal-900/15 transition-[opacity,transform] duration-[350ms] ease-out ${
+        className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[70] origin-top overflow-hidden rounded-xl border border-brand-line bg-white p-1.5 shadow-2xl shadow-brand-teal-900/15 transition-[opacity,transform] duration-[350ms] ease-out ${
           open
             ? "pointer-events-auto translate-y-0 scale-y-100 opacity-100"
             : "pointer-events-none -translate-y-2 scale-y-90 opacity-0"
