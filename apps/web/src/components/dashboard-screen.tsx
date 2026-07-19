@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { useProfileImage } from "@/components/use-profile-image";
 
-type DashboardRole = "patient" | "clinic";
+export type DashboardRole = "patient" | "clinic";
 
-type SidebarItem = {
+export type SidebarItem = {
   icon: string;
   label: string;
   href: string;
@@ -19,9 +19,9 @@ const patientNavigation: SidebarItem[] = [
   { icon: "💬", label: "Messages", href: "/dashboard/messages" },
 ];
 
-const clinicNavigation: SidebarItem[] = [
+export const clinicNavigation: SidebarItem[] = [
   { icon: "🏥", label: "My Clinic", href: "/dashboard/clinic" },
-  { icon: "📥", label: "Booking requests", href: "#requests" },
+  { icon: "📥", label: "Booking requests", href: "/dashboard/clinic/booking-requests" },
   { icon: "🩺", label: "Procedures", href: "#procedures" },
   { icon: "☆", label: "Reviews", href: "#reviews" },
 ];
@@ -97,7 +97,12 @@ export function DashboardScreen({ role }: { role: DashboardRole }) {
   return (
     <main className="flex-1 bg-white py-4 lg:py-5">
       <div className="grid min-h-[650px] w-full overflow-hidden border border-brand-line bg-white lg:grid-cols-[310px_minmax(0,1fr)]">
-        <DashboardSidebar role={role} navigation={navigation} profileImage={profileImage} />
+        <DashboardSidebar
+          role={role}
+          navigation={navigation}
+          profileImage={profileImage}
+          activeLabel={isPatient ? "My Page" : "My Clinic"}
+        />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
           <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
@@ -147,26 +152,28 @@ export function DashboardScreen({ role }: { role: DashboardRole }) {
   );
 }
 
-function DashboardSidebar({
+export function DashboardSidebar({
   role,
   navigation,
   profileImage,
+  activeLabel,
 }: {
   role: DashboardRole;
   navigation: SidebarItem[];
   profileImage: string;
+  activeLabel: string;
 }) {
   const isPatient = role === "patient";
 
   return (
     <aside className="flex border-b border-brand-line bg-[#fdfcf9] lg:min-h-full lg:flex-col lg:border-b-0 lg:border-r">
       <nav className="flex min-w-0 flex-1 gap-2 overflow-x-auto p-4 lg:block lg:space-y-2 lg:p-5">
-        {navigation.map((item, index) => (
+        {navigation.map((item) => (
           <Link
             key={item.label}
             href={item.href}
             className={`flex min-h-12 shrink-0 items-center gap-3 rounded-xl px-4 text-base font-semibold transition ${
-              index === 0
+              item.label === activeLabel
                 ? "bg-brand-teal-100 text-brand-teal-700"
                 : "text-brand-muted hover:bg-brand-cream hover:text-brand-teal-900"
             }`}
@@ -262,13 +269,7 @@ function ClinicRequests() {
 
   return (
     <section className="mt-9" id="requests">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-bold text-brand-ink">New booking requests</h2>
-        <a href="#requests" className="group text-sm font-semibold text-brand-teal-700">
-          View all{" "}
-          <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-        </a>
-      </div>
+      <h2 className="mb-4 text-lg font-bold text-brand-ink">New booking requests</h2>
 
       {message && (
         <p
@@ -279,7 +280,7 @@ function ClinicRequests() {
         </p>
       )}
 
-      <div className="space-y-3">
+      <div className="max-h-[360px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
         {requests.map((request) => (
           <article
             key={request.id}
@@ -309,7 +310,7 @@ function ClinicRequests() {
                 onClick={() => resolveRequest(request.id, "accepted")}
                 className="min-h-11 rounded-xl bg-brand-teal-700 px-5 text-sm font-bold text-white transition hover:bg-brand-teal-900"
               >
-                Accept &amp; confirm price
+                Accept &amp; confirm
               </button>
             </div>
           </article>
