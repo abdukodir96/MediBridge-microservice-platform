@@ -7,19 +7,13 @@ import { useQuery } from "@apollo/client/react";
 import { LikeButton } from "@/components/like-button";
 import { Pagination } from "@/components/pagination";
 import { ClinicsFilterPanel, ClinicsSort } from "@/components/clinics-filter-panel";
-import { GET_CLINICS, type Clinic } from "@/lib/graphql/clinics";
+import { GET_CLINICS } from "@/lib/graphql/clinics";
 import { toBackendSort } from "@/lib/clinic-sort";
 import { toBackendSpecialties, toBackendLangs } from "@/lib/clinic-filters";
 import { titleCaseEnum } from "@/lib/clinic-format";
+import { CARD_GRADIENTS, clinicBadge } from "@/lib/clinic-card";
 
 const CLINICS_PER_PAGE = 6;
-
-const CARD_GRADIENTS = [
-  "from-brand-teal-500 to-brand-teal-900",
-  "from-brand-teal-700 to-brand-teal-900",
-  "from-brand-teal-900 to-brand-teal-500",
-  "from-brand-teal-500 to-brand-teal-700",
-];
 
 function parseList(value?: string | null) {
   return value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
@@ -33,13 +27,6 @@ function clampPrice(value: string | null, fallback: number) {
   if (value == null || value === "") return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.min(8000, Math.max(0, parsed)) : fallback;
-}
-
-function clinicBadge(clinic: Clinic) {
-  if (clinic.clinicRating >= 4.9) return "Top Rated";
-  if (clinic.clinicReviewCount >= 400) return "Patient Choice";
-  if (clinic.clinicLangs.length > 1) return "International Friendly";
-  return "Verified";
 }
 
 export default function ClinicsPage() {

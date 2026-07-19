@@ -69,3 +69,39 @@ export const GET_CLINICS: TypedDocumentNode<GetClinicsData, GetClinicsVars> = gq
 		}
 	}
 `;
+
+const GET_CLINICS_QUERY = `
+	query GetClinics($input: ClinicsInquiry!) {
+		getClinics(input: $input) {
+			total
+			list {
+				_id
+				clinicName
+				clinicDesc
+				clinicAddress
+				clinicImages
+				clinicSpecialties
+				clinicRating
+				clinicReviewCount
+				clinicLangs
+				startingPrice
+			}
+		}
+	}
+`;
+
+// Server-side fetch (for Server Components, e.g. the landing page's Featured
+// Clinics section) — same query as GET_CLINICS above, but run via a plain
+// fetch instead of Apollo's browser-oriented client. Mirrors the pattern in
+// lib/graphql/clinic-profile.ts.
+export async function fetchClinics(input: ClinicsInquiry): Promise<{ list: Clinic[]; total: number }> {
+	const res = await fetch(process.env.NEXT_PUBLIC_GATEWAY_URL as string, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ query: GET_CLINICS_QUERY, variables: { input } }),
+		cache: 'no-store',
+	});
+
+	const json = (await res.json()) as { data: GetClinicsData | null };
+	return json.data?.getClinics ?? { list: [], total: 0 };
+}

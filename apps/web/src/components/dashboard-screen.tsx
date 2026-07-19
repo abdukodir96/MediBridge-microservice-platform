@@ -16,7 +16,7 @@ type SidebarItem = {
 const patientNavigation: SidebarItem[] = [
   { icon: "👤", label: "My Page", href: "/dashboard/patient" },
   { icon: "⌕", label: "Find clinics", href: "/clinics" },
-  { icon: "💬", label: "Messages", href: "#messages" },
+  { icon: "💬", label: "Messages", href: "/dashboard/messages" },
 ];
 
 const clinicNavigation: SidebarItem[] = [
@@ -96,7 +96,7 @@ export function DashboardScreen({ role }: { role: DashboardRole }) {
 
   return (
     <main className="flex-1 bg-white py-6 lg:py-10">
-      <div className="grid min-h-[650px] w-full overflow-hidden border-y border-brand-line bg-white shadow-[0_18px_50px_rgba(13,59,59,0.08)] lg:grid-cols-[270px_minmax(0,1fr)]">
+      <div className="grid min-h-[650px] w-full overflow-hidden border-y border-brand-line bg-white shadow-[0_18px_50px_rgba(13,59,59,0.08)] lg:grid-cols-[310px_minmax(0,1fr)]">
         <DashboardSidebar role={role} navigation={navigation} profileImage={profileImage} />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -165,13 +165,13 @@ function DashboardSidebar({
           <Link
             key={item.label}
             href={item.href}
-            className={`flex min-h-12 shrink-0 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition ${
+            className={`flex min-h-12 shrink-0 items-center gap-3 rounded-xl px-4 text-base font-semibold transition ${
               index === 0
                 ? "bg-brand-teal-100 text-brand-teal-700"
                 : "text-brand-muted hover:bg-brand-cream hover:text-brand-teal-900"
             }`}
           >
-            <span className="text-xl" aria-hidden="true">
+            <span className={item.label === "Find clinics" ? "text-4xl" : "text-xl"} aria-hidden="true">
               {item.icon}
             </span>
             {item.label}

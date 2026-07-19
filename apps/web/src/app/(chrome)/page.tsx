@@ -4,53 +4,9 @@ import { LikeButton } from "@/components/like-button";
 import { TrustStats } from "@/components/trust-stats";
 import { ClinicSearchBar } from "@/components/clinic-search-bar";
 import { Testimonials } from "@/components/testimonials";
-
-const clinics = [
-  {
-    slug: "seoul-line-clinic",
-    name: "Seoul Line Clinic",
-    location: "Gangnam-gu, Seoul",
-    tags: ["Plastic Surgery", "中文 OK"],
-    rating: "4.9",
-    reviews: "312",
-    price: "$2,400",
-    badge: "Top Rated",
-    gradient: "from-brand-teal-500 to-brand-teal-900",
-  },
-  {
-    slug: "apgujeong-derma-center",
-    name: "Apgujeong Derma Center",
-    location: "Apgujeong, Seoul",
-    tags: ["Dermatology", "日本語 OK"],
-    rating: "4.8",
-    reviews: "206",
-    price: "$180",
-    badge: "Best Value",
-    gradient: "from-brand-teal-700 to-brand-teal-900",
-  },
-  {
-    slug: "banobagi-aesthetic",
-    name: "Banobagi Aesthetic",
-    location: "Sinsa-dong, Seoul",
-    tags: ["Face Contour", "English"],
-    rating: "5.0",
-    reviews: "489",
-    price: "$3,100",
-    badge: "Patient Choice",
-    gradient: "from-brand-teal-700 to-brand-teal-900",
-  },
-  {
-    slug: "wonjin-beauty-medical",
-    name: "Wonjin Beauty Medical",
-    location: "Sinsa-dong, Seoul",
-    tags: ["Rhinoplasty", "English"],
-    rating: "4.9",
-    reviews: "271",
-    price: "$2,900",
-    badge: "International Friendly",
-    gradient: "from-brand-teal-500 to-brand-teal-900",
-  },
-];
+import { fetchClinics } from "@/lib/graphql/clinics";
+import { CARD_GRADIENTS, clinicBadge } from "@/lib/clinic-card";
+import { titleCaseEnum } from "@/lib/clinic-format";
 
 const steps = [
   {
@@ -71,7 +27,9 @@ const steps = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const { list: clinics } = await fetchClinics({ sort: "TOP_RATED", limit: 4 });
+
   return (
     <div className="flex flex-1 flex-col bg-white">
       {/* HERO */}
@@ -120,40 +78,42 @@ export default function Home() {
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {clinics.map((clinic) => (
-            <div key={clinic.name} className="flex h-full flex-col overflow-hidden rounded-xl border border-brand-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-brand-teal-500 hover:shadow-xl hover:shadow-brand-teal-900/10">
-              <div className={`relative h-64 bg-linear-to-br ${clinic.gradient}`}>
-                <Link href={`/clinics/${clinic.slug}`} className="absolute inset-0" aria-label={clinic.name} />
+          {clinics.map((clinic, index) => (
+            <div key={clinic._id} className="flex h-full flex-col overflow-hidden rounded-xl border border-brand-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-brand-teal-500 hover:shadow-xl hover:shadow-brand-teal-900/10">
+              <div className={`relative h-64 bg-linear-to-br ${CARD_GRADIENTS[index % CARD_GRADIENTS.length]}`}>
+                <Link href={`/clinics/${clinic._id}`} className="absolute inset-0" aria-label={clinic.clinicName} />
                 <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-teal-700">
-                  ✦ {clinic.badge}
+                  ✦ {clinicBadge(clinic)}
                 </span>
                 <LikeButton />
               </div>
               <div className="flex flex-1 flex-col p-5">
-                <Link href={`/clinics/${clinic.slug}`} className="mb-2 block text-xl font-bold text-brand-ink hover:text-brand-teal-700">
-                  {clinic.name}
+                <Link href={`/clinics/${clinic._id}`} className="mb-2 block text-xl font-bold text-brand-ink hover:text-brand-teal-700">
+                  {clinic.clinicName}
                 </Link>
                 <div className="mb-5 flex items-center gap-1.5 text-base text-brand-muted">
-                  📍 {clinic.location}
+                  📍 {clinic.clinicAddress}
                 </div>
                 <div className="mb-7 flex flex-1 flex-wrap items-start gap-2">
-                  {clinic.tags.map((tag) => (
+                  {clinic.clinicSpecialties.map((specialty) => (
                     <span
-                      key={tag}
+                      key={specialty}
                       className="rounded-full bg-brand-teal-100 px-3 py-1 text-sm font-semibold text-brand-teal-700"
                     >
-                      {tag}
+                      {titleCaseEnum(specialty)}
                     </span>
                   ))}
                 </div>
                 <div className="flex items-center justify-between border-t border-brand-line pt-4">
                   <span className="flex items-center gap-1.5 text-lg font-bold text-brand-ink">
-                    <span className="text-brand-gold">★</span> {clinic.rating}
-                    <span className="font-normal text-brand-muted">({clinic.reviews})</span>
+                    <span className="text-brand-gold">★</span> {clinic.clinicRating.toFixed(1)}
+                    <span className="font-normal text-brand-muted">({clinic.clinicReviewCount})</span>
                   </span>
-                  <span className="text-base text-brand-muted">
-                    from <b className="text-brand-teal-900">{clinic.price}</b>
-                  </span>
+                  {clinic.startingPrice != null && (
+                    <span className="text-base text-brand-muted">
+                      from <b className="text-brand-teal-900">${clinic.startingPrice.toLocaleString()}</b>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
