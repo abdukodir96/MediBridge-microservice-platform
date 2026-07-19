@@ -22,7 +22,7 @@ const patientNavigation: SidebarItem[] = [
 export const clinicNavigation: SidebarItem[] = [
   { icon: "🏥", label: "My Clinic", href: "/dashboard/clinic" },
   { icon: "📥", label: "Booking requests", href: "/dashboard/clinic/booking-requests" },
-  { icon: "🩺", label: "Procedures", href: "#procedures" },
+  { icon: "🩺", label: "Procedures", href: "/dashboard/clinic/procedures" },
   { icon: "☆", label: "Reviews", href: "#reviews" },
 ];
 
@@ -117,7 +117,7 @@ export function DashboardScreen({ role }: { role: DashboardRole }) {
               </p>
             </div>
             <Link
-              href={isPatient ? "/clinics" : "#procedures"}
+              href={isPatient ? "/clinics" : "/dashboard/clinic/procedures/new"}
               className="inline-flex min-h-11 items-center justify-center self-start rounded-xl bg-brand-teal-700 px-5 text-sm font-bold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-lg"
             >
               {isPatient ? "+ Find a clinic" : "+ Add procedure"}
