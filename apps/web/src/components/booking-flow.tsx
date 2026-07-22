@@ -146,7 +146,7 @@ export function BookingFlow() {
       // failure (e.g. a dropped connection) the patient's filled-in form
       // must still be there when they retry.
       sessionStorage.removeItem(draftKey);
-      router.push("/dashboard?submitted=true");
+      router.push("/dashboard/patient?submitted=true");
     } catch {
       // error is exposed via the mutation's `error` state and rendered
       // near the submit button; draft stays intact for a retry.

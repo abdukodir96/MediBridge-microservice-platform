@@ -28,7 +28,7 @@ export function SiteHeader() {
   if (hidden) return null;
 
   return (
-    <header className="relative z-10 flex items-center justify-between border-b border-brand-line bg-background px-6 py-4 shadow-[0_8px_16px_-12px_rgba(13,59,59,0.2)] sm:px-10">
+    <header className="relative z-40 flex items-center justify-between border-b border-brand-line bg-background px-6 py-4 shadow-[0_8px_16px_-12px_rgba(13,59,59,0.2)] sm:px-10">
       <Logo />
       <nav className="hidden items-center gap-17.5 text-[22.5px] font-medium text-brand-muted lg:flex">
         {navLinks.map((link) => (

@@ -4,6 +4,7 @@ export interface ClinicProfile {
 	clinicName: string;
 	clinicDesc: string;
 	clinicAddress: string;
+	clinicImages: string[];
 	clinicSpecialties: ClinicSpecialty[];
 	clinicLangs: MemberLang[];
 	clinicRating: number;
@@ -27,6 +28,7 @@ const GET_CLINIC_PROFILE_QUERY = `
 			clinicName
 			clinicDesc
 			clinicAddress
+			clinicImages
 			clinicSpecialties
 			clinicLangs
 			clinicRating

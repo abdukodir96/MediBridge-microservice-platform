@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useProfileImage } from "@/components/use-profile-image";
 import { useClinicProfile } from "@/components/clinic-profile-store";
 
@@ -89,6 +90,19 @@ const initialRequests = [
   },
 ];
 
+function BookingSubmittedBanner() {
+  const searchParams = useSearchParams();
+  const justSubmitted = searchParams.get("submitted") === "true";
+
+  if (!justSubmitted) return null;
+
+  return (
+    <div className="mb-6 rounded-xl border border-teal-100 bg-teal-50 p-4 text-sm text-teal-900">
+      ✓ Your booking request was submitted. The clinic will review it and confirm shortly.
+    </div>
+  );
+}
+
 export function DashboardScreen({ role }: { role: DashboardRole }) {
   const isPatient = role === "patient";
   const navigation = isPatient ? patientNavigation : clinicNavigation;
@@ -106,6 +120,12 @@ export function DashboardScreen({ role }: { role: DashboardRole }) {
         />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+          {isPatient && (
+            <Suspense fallback={null}>
+              <BookingSubmittedBanner />
+            </Suspense>
+          )}
+
           <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="font-serif text-[30px] font-semibold leading-tight text-brand-teal-900 sm:text-[36px]">

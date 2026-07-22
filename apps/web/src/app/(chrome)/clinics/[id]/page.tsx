@@ -34,22 +34,33 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
 		...procedures.map((p) => p.procedureName),
 	].filter((tag, index, all) => all.indexOf(tag) === index);
 
+	// clinicImages is [] until a clinic uploads real photos — fall back to the
+	// generic placeholder rather than showing a broken/empty hero.
+	const coverImage = clinic.clinicImages[0] || "/doctor/doctor.jpg";
+	const galleryImages = clinic.clinicImages.slice(1, 4);
+
 	return (
 		<div className="flex min-h-screen flex-col bg-white">
 			<section className="relative h-[300px] overflow-hidden bg-brand-teal-900 sm:h-[380px]">
-				<Image src="/doctor/doctor.jpg" alt="" fill priority sizes="100vw" className="object-cover object-center opacity-75" />
+				<Image src={coverImage} alt="" fill priority sizes="100vw" className="object-cover object-center opacity-75" />
 				<div className="absolute inset-0 bg-linear-to-r from-brand-teal-900/80 via-brand-teal-700/35 to-brand-teal-900/55" />
 				<Link href="/clinics" className="absolute left-5 top-5 z-10 rounded-lg bg-white/95 px-4 py-2 text-sm font-bold text-brand-teal-900 shadow-lg transition hover:bg-white sm:left-8 sm:top-7">
 					‹ Back to results
 				</Link>
-				<div className="absolute bottom-5 right-5 z-10 flex gap-2 sm:bottom-7 sm:right-8">
-					{[1, 2, 3].map((item) => (
-						<div key={item} className="relative h-14 w-18 overflow-hidden rounded-lg border border-white/60 bg-white/20">
-							<Image src="/doctor/doctor.jpg" alt="" fill sizes="72px" className="object-cover" />
-						</div>
-					))}
-					<div className="flex h-14 w-18 items-center justify-center rounded-lg border border-white/60 bg-brand-teal-900/55 text-xs font-bold text-white">+12</div>
-				</div>
+				{galleryImages.length > 0 && (
+					<div className="absolute bottom-5 right-5 z-10 flex gap-2 sm:bottom-7 sm:right-8">
+						{galleryImages.map((image) => (
+							<div key={image} className="relative h-14 w-18 overflow-hidden rounded-lg border border-white/60 bg-white/20">
+								<Image src={image} alt="" fill sizes="72px" className="object-cover" />
+							</div>
+						))}
+						{clinic.clinicImages.length > 4 && (
+							<div className="flex h-14 w-18 items-center justify-center rounded-lg border border-white/60 bg-brand-teal-900/55 text-xs font-bold text-white">
+								+{clinic.clinicImages.length - 4}
+							</div>
+						)}
+					</div>
+				)}
 			</section>
 
 			<main className="mx-auto grid w-full max-w-[1540px] gap-9 px-6 py-9 sm:px-10 sm:py-12 lg:grid-cols-[minmax(0,1fr)_430px] lg:gap-12">
