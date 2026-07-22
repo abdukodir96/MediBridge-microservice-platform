@@ -216,7 +216,7 @@ function ProcedureForm({
 
       <form
         onSubmit={submitProcedure}
-        className="mt-7 max-w-[860px] rounded-2xl border border-brand-line bg-white p-5 sm:p-7"
+        className="mt-7 w-full rounded-2xl border border-brand-line bg-white p-5 sm:p-7"
       >
         <ProcedureField label="Procedure name" required>
           <input

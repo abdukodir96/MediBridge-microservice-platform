@@ -27,12 +27,14 @@ export function ClinicProceduresScreen() {
   const removeProcedure = async (procedure: ClinicProcedure) => {
     const result = await Swal.fire({
       icon: "warning",
-      title: "Delete this procedure?",
-      text: `${procedure.name} will no longer be visible to patients.`,
+      title: "Are you sure?",
+      text: `Do you really want to delete ${procedure.name}? It will no longer be visible to patients.`,
       showCancelButton: true,
-      confirmButtonText: "Delete procedure",
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "No, keep it",
       confirmButtonColor: "#c0574f",
       cancelButtonColor: "#64748b",
+      reverseButtons: true,
     });
     if (!result.isConfirmed) return;
 
@@ -73,7 +75,7 @@ export function ClinicProceduresScreen() {
             </Link>
           </header>
 
-          <div className="mt-8 space-y-3">
+          <div className="mt-8 max-h-[390px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
             {procedures.map((procedure, index) => (
               <article
                 key={procedure.id}
@@ -100,9 +102,6 @@ export function ClinicProceduresScreen() {
                 <div className="md:min-w-[175px] md:text-right">
                   <p className="font-serif text-lg font-semibold text-brand-teal-900">
                     {formatMoney(procedure.priceMin, procedure.currency)}–{formatMoney(procedure.priceMax, procedure.currency)}
-                  </p>
-                  <p className="mt-0.5 text-[11px] uppercase text-brand-muted">
-                    {procedure.currency}
                   </p>
                 </div>
 

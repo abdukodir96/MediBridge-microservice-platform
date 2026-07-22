@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useProfileImage } from "@/components/use-profile-image";
+import { useClinicProfile } from "@/components/clinic-profile-store";
 
 export type DashboardRole = "patient" | "clinic";
 
@@ -23,7 +24,7 @@ export const clinicNavigation: SidebarItem[] = [
   { icon: "🏥", label: "My Clinic", href: "/dashboard/clinic" },
   { icon: "📥", label: "Booking requests", href: "/dashboard/clinic/booking-requests" },
   { icon: "🩺", label: "Procedures", href: "/dashboard/clinic/procedures" },
-  { icon: "☆", label: "Reviews", href: "#reviews" },
+  { icon: "☆", label: "Reviews", href: "/dashboard/clinic/reviews" },
 ];
 
 type DashboardStat = {
@@ -157,13 +158,17 @@ export function DashboardSidebar({
   navigation,
   profileImage,
   activeLabel,
+  identityActive = false,
 }: {
   role: DashboardRole;
   navigation: SidebarItem[];
   profileImage: string;
   activeLabel: string;
+  identityActive?: boolean;
 }) {
   const isPatient = role === "patient";
+  const { profile: clinicProfile } = useClinicProfile();
+  const clinicIdentityName = clinicProfile.name.replace(/\s+Clinic$/i, "");
 
   return (
     <aside className="flex border-b border-brand-line bg-[#fdfcf9] lg:min-h-full lg:flex-col lg:border-b-0 lg:border-r">
@@ -187,17 +192,22 @@ export function DashboardSidebar({
       </nav>
 
       <div className="hidden border-t border-brand-line p-5 lg:block">
-        <Link href={isPatient ? "/dashboard/profile" : "/dashboard/clinic"} className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-brand-teal-100">
+        <Link
+          href={isPatient ? "/dashboard/profile" : "/dashboard/clinic/profile"}
+          className={`flex items-center gap-3 rounded-xl p-2 transition hover:bg-brand-teal-100 ${
+            identityActive ? "bg-brand-teal-100" : ""
+          }`}
+        >
           <Image
             src={profileImage}
-            alt={isPatient ? "Wang Lei" : "Seoul Line Clinic"}
+            alt={isPatient ? "Wang Lei" : clinicProfile.name}
             width={44}
             height={44}
             className="h-11 w-11 rounded-full border border-brand-line object-cover"
           />
           <div>
             <p className="text-sm font-bold text-brand-ink">
-              {isPatient ? "Wang Lei" : "Seoul Line"}
+              {isPatient ? "Wang Lei" : clinicIdentityName}
             </p>
             <p className="mt-0.5 text-xs text-brand-muted">
               {isPatient ? "Patient · 🇨🇳" : "Clinic · Top Rated"}

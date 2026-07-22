@@ -4,9 +4,17 @@ type PaginationProps = {
   currentPage: number;
   totalPages: number;
   query?: Record<string, string>;
+  basePath?: string;
+  ariaLabel?: string;
 };
 
-export function Pagination({ currentPage, totalPages, query = {} }: PaginationProps) {
+export function Pagination({
+  currentPage,
+  totalPages,
+  query = {},
+  basePath = "/clinics",
+  ariaLabel = "Clinics pagination",
+}: PaginationProps) {
   const pageHref = (page: number) => {
     const params = new URLSearchParams();
     Object.entries(query).forEach(([key, value]) => {
@@ -14,13 +22,13 @@ export function Pagination({ currentPage, totalPages, query = {} }: PaginationPr
     });
     if (page > 1) params.set("page", String(page));
     const search = params.toString();
-    return search ? `/clinics?${search}` : "/clinics";
+    return search ? `${basePath}?${search}` : basePath;
   };
 
   const pages = getVisiblePages(currentPage, totalPages);
 
   return (
-    <nav aria-label="Clinics pagination" className="mt-12 flex w-full justify-center">
+    <nav aria-label={ariaLabel} className="mt-12 flex w-full justify-center">
       <div className="flex w-full max-w-md items-center justify-between font-medium text-brand-muted">
         <PaginationArrow
           direction="previous"
