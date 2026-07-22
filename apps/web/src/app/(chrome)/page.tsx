@@ -4,6 +4,7 @@ import { LikeButton } from "@/components/like-button";
 import { TrustStats } from "@/components/trust-stats";
 import { ClinicSearchBar } from "@/components/clinic-search-bar";
 import { Testimonials } from "@/components/testimonials";
+import { Newsletter } from "@/components/newsletter";
 import { fetchClinics } from "@/lib/graphql/clinics";
 import { CARD_GRADIENTS, clinicBadge } from "@/lib/clinic-card";
 import { titleCaseEnum } from "@/lib/clinic-format";
@@ -122,6 +123,8 @@ export default async function Home() {
       </section>
 
       <Testimonials />
+
+      <Newsletter />
 
       {/* HOW IT WORKS */}
       <section className="relative z-10 bg-brand-teal-900 px-6 py-12 text-white shadow-[0_-8px_16px_-12px_rgba(13,59,59,0.3)] sm:px-10 sm:py-14">
