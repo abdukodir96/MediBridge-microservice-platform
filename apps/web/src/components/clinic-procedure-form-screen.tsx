@@ -4,32 +4,27 @@ import Link from "next/link";
 import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import { useMutation, useQuery } from "@apollo/client/react";
 import {
   clinicNavigation,
   DashboardSidebar,
 } from "@/components/dashboard-screen";
-import {
-  createClinicProcedure,
-  makeProcedureId,
-  updateClinicProcedure,
-  useClinicProcedures,
-  type ClinicProcedure,
-} from "@/components/clinic-procedure-store";
 import { useProfileImage } from "@/components/use-profile-image";
+import { useClinic } from "@/context/clinic-context";
+import {
+  CREATE_PROCEDURE,
+  GET_PROCEDURE,
+  UPDATE_PROCEDURE,
+  type Procedure,
+  type ProcedureCategory,
+  type ProcedureCurrency,
+} from "@/lib/graphql/procedures";
 
-const categories = ["Face", "Body", "Skin", "Dental", "Hair", "Eye"];
+const categories: ProcedureCategory[] = ["FACE", "BODY", "SKIN", "DENTAL", "HAIR", "EYE"];
 
-const emptyProcedure: ClinicProcedure = {
-  id: "",
-  name: "",
-  category: "Face",
-  description: "",
-  priceMin: 0,
-  priceMax: 0,
-  currency: "USD",
-  recoveryDays: 0,
-  images: [],
-};
+function formatCategory(category: string) {
+  return category.charAt(0) + category.slice(1).toLowerCase();
+}
 
 export function ClinicProcedureFormScreen({
   mode,
@@ -39,11 +34,13 @@ export function ClinicProcedureFormScreen({
   procedureId?: string;
 }) {
   const profileImage = useProfileImage();
-  const { procedures, snapshot } = useClinicProcedures();
-  const procedure =
-    mode === "edit"
-      ? procedures.find((item) => item.id === procedureId)
-      : emptyProcedure;
+  const { clinicId } = useClinic();
+  const { data, loading, error } = useQuery(GET_PROCEDURE, {
+    variables: { procedureId: procedureId ?? "" },
+    skip: mode === "add",
+  });
+
+  const procedure = mode === "edit" ? data?.getProcedure : undefined;
 
   return (
     <main className="flex-1 bg-white py-4 lg:py-5">
@@ -56,10 +53,15 @@ export function ClinicProcedureFormScreen({
         />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-          {procedure ? (
+          {mode === "edit" && loading ? (
+            <div className="flex min-h-[500px] items-center justify-center">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-line border-t-brand-teal-700" />
+            </div>
+          ) : mode === "add" || procedure ? (
             <ProcedureForm
-              key={`${mode}:${procedureId ?? "new"}:${snapshot}`}
+              key={`${mode}:${procedureId ?? "new"}`}
               mode={mode}
+              clinicId={clinicId}
               procedure={procedure}
             />
           ) : (
@@ -68,7 +70,8 @@ export function ClinicProcedureFormScreen({
                 Procedure not found
               </h1>
               <p className="mt-2 text-sm text-brand-muted">
-                This procedure may have been deleted or its link is no longer valid.
+                {error?.message ??
+                  "This procedure may have been deleted or its link is no longer valid."}
               </p>
               <Link
                 href="/dashboard/clinic/procedures"
@@ -86,19 +89,34 @@ export function ClinicProcedureFormScreen({
 
 function ProcedureForm({
   mode,
+  clinicId,
   procedure,
 }: {
   mode: "add" | "edit";
-  procedure: ClinicProcedure;
+  clinicId: string;
+  procedure?: Procedure;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [category, setCategory] = useState(procedure.category);
-  const [currency, setCurrency] = useState<"USD" | "KRW">(
-    procedure.currency,
-  );
-  const [images, setImages] = useState(procedure.images);
+  const [category, setCategory] = useState<ProcedureCategory>(procedure?.procedureCategory ?? "FACE");
+  const [currency, setCurrency] = useState<ProcedureCurrency>(procedure?.procedureCurrency ?? "USD");
+  const [images, setImages] = useState<string[]>(procedure?.procedureImages ?? []);
+  const [priceMin, setPriceMin] = useState(procedure?.procedurePriceMin?.toString() ?? "");
+  const [priceMax, setPriceMax] = useState(procedure?.procedurePriceMax?.toString() ?? "");
   const isEditing = mode === "edit";
+
+  const [createProcedure, { loading: creating }] = useMutation(CREATE_PROCEDURE);
+  const [updateProcedure, { loading: updating }] = useMutation(UPDATE_PROCEDURE);
+  const saving = creating || updating;
+
+  // Frontend-side hint only — the backend validates this too, but a disabled
+  // button + inline message gives the user faster feedback than a round trip.
+  const priceInvalid =
+    priceMin !== "" &&
+    priceMax !== "" &&
+    Number.isFinite(Number(priceMax)) &&
+    Number.isFinite(Number(priceMin)) &&
+    Number(priceMax) < Number(priceMin);
 
   const handleFiles = async (files: FileList | File[]) => {
     const selected = Array.from(files);
@@ -138,14 +156,16 @@ function ProcedureForm({
 
   const submitProcedure = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (priceInvalid) return;
+
     const formData = new FormData(event.currentTarget);
     const name = String(formData.get("name") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
-    const priceMin = Number(formData.get("priceMin"));
-    const priceMax = Number(formData.get("priceMax"));
-    const recoveryDays = Number(formData.get("recoveryDays"));
+    const priceMinValue = Number(priceMin);
+    const priceMaxValue = Number(priceMax);
+    const duration = Number(formData.get("duration"));
 
-    if (!name || !category || !Number.isFinite(priceMin) || !Number.isFinite(priceMax)) {
+    if (!name || !category || !Number.isFinite(priceMinValue) || !Number.isFinite(priceMaxValue)) {
       await Swal.fire({
         icon: "warning",
         title: "Complete the required fields",
@@ -155,7 +175,7 @@ function ProcedureForm({
       return;
     }
 
-    if (priceMin < 0 || priceMax < priceMin) {
+    if (priceMinValue < 0 || priceMaxValue < priceMinValue) {
       await Swal.fire({
         icon: "warning",
         title: "Check the price range",
@@ -165,40 +185,52 @@ function ProcedureForm({
       return;
     }
 
-    if (!Number.isFinite(recoveryDays) || recoveryDays < 0) {
+    if (!Number.isFinite(duration) || duration < 0) {
       await Swal.fire({
         icon: "warning",
-        title: "Check recovery duration",
-        text: "Recovery duration cannot be a negative number.",
+        title: "Check duration",
+        text: "Duration cannot be a negative number.",
         confirmButtonColor: "#125453",
       });
       return;
     }
 
-    const nextProcedure: ClinicProcedure = {
-      id: isEditing ? procedure.id : makeProcedureId(name),
-      name,
-      category,
-      description,
-      priceMin,
-      priceMax,
-      currency,
-      recoveryDays,
-      images,
+    const input = {
+      procedureName: name,
+      procedureCategory: category,
+      procedureDesc: description || undefined,
+      procedurePriceMin: priceMinValue,
+      procedurePriceMax: priceMaxValue,
+      procedureCurrency: currency,
+      procedureDuration: duration,
+      procedureImages: images,
+      procedureClinicId: clinicId,
     };
 
-    if (isEditing) updateClinicProcedure(nextProcedure);
-    else createClinicProcedure(nextProcedure);
+    try {
+      if (isEditing && procedure) {
+        await updateProcedure({ variables: { procedureId: procedure._id, input } });
+      } else {
+        await createProcedure({ variables: { input } });
+      }
 
-    await Swal.fire({
-      icon: "success",
-      title: isEditing ? "Procedure updated" : "Procedure added",
-      text: `${name} is now available in your clinic procedure list.`,
-      confirmButtonColor: "#125453",
-      timer: 1500,
-      showConfirmButton: false,
-    });
-    router.push("/dashboard/clinic/procedures");
+      await Swal.fire({
+        icon: "success",
+        title: isEditing ? "Procedure updated" : "Procedure added",
+        text: `${name} is now available in your clinic procedure list.`,
+        confirmButtonColor: "#125453",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      router.push("/dashboard/clinic/procedures");
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Couldn't save procedure",
+        text: (err as Error).message,
+        confirmButtonColor: "#125453",
+      });
+    }
   };
 
   return (
@@ -209,7 +241,7 @@ function ProcedureForm({
         </h1>
         <p className="mt-1.5 text-sm text-brand-muted sm:text-base">
           {isEditing
-            ? `${procedure.name} · changes are visible to patients immediately`
+            ? `${procedure?.procedureName} · changes are visible to patients immediately`
             : "Add a treatment patients can discover on your clinic profile."}
         </p>
       </header>
@@ -222,7 +254,7 @@ function ProcedureForm({
           <input
             required
             name="name"
-            defaultValue={procedure.name}
+            defaultValue={procedure?.procedureName}
             placeholder="e.g. Rhinoplasty"
             className={inputClass}
           />
@@ -243,7 +275,7 @@ function ProcedureForm({
                     : "border-brand-line text-brand-muted hover:border-brand-teal-500 hover:bg-brand-cream"
                 }`}
               >
-                {item}
+                {formatCategory(item)}
               </button>
             ))}
           </div>
@@ -252,7 +284,7 @@ function ProcedureForm({
         <ProcedureField label="Description">
           <textarea
             name="description"
-            defaultValue={procedure.description}
+            defaultValue={procedure?.procedureDesc}
             placeholder="Describe the procedure, consultation, and aftercare..."
             rows={4}
             className={inputClass + " resize-y py-3"}
@@ -263,22 +295,22 @@ function ProcedureForm({
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] sm:items-center">
             <input
               required
-              name="priceMin"
               type="number"
               min="0"
               step="1"
-              defaultValue={procedure.priceMin || ""}
+              value={priceMin}
+              onChange={(event) => setPriceMin(event.target.value)}
               placeholder="Minimum"
               className={inputClass}
             />
             <span className="hidden text-brand-muted sm:block">–</span>
             <input
               required
-              name="priceMax"
               type="number"
               min="0"
               step="1"
-              defaultValue={procedure.priceMax || ""}
+              value={priceMax}
+              onChange={(event) => setPriceMax(event.target.value)}
               placeholder="Maximum"
               className={inputClass}
             />
@@ -299,18 +331,24 @@ function ProcedureForm({
               ))}
             </div>
           </div>
-          <p className="mt-2 text-xs text-brand-muted">
-            Maximum must be greater than or equal to minimum.
-          </p>
+          {priceInvalid ? (
+            <p className="mt-2 text-xs font-semibold text-red-600">
+              Maximum price must be greater than or equal to minimum price.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-brand-muted">
+              Maximum must be greater than or equal to minimum.
+            </p>
+          )}
         </ProcedureField>
 
-        <ProcedureField label="Recovery duration (days)">
+        <ProcedureField label="Duration (days)">
           <input
-            name="recoveryDays"
+            name="duration"
             type="number"
             min="0"
             step="1"
-            defaultValue={procedure.recoveryDays}
+            defaultValue={procedure?.procedureDuration ?? 0}
             className={inputClass}
           />
         </ProcedureField>
@@ -371,9 +409,10 @@ function ProcedureForm({
         <div className="mt-7 flex flex-wrap justify-end gap-3 border-t border-brand-line pt-6">
           <button
             type="submit"
-            className="min-h-12 cursor-pointer rounded-xl bg-brand-teal-700 px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-md"
+            disabled={saving || priceInvalid}
+            className="min-h-12 cursor-pointer rounded-xl bg-brand-teal-700 px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
           >
-            {isEditing ? "Save changes" : "Add procedure"}
+            {saving ? "Saving..." : isEditing ? "Save changes" : "Add procedure"}
           </button>
           <Link
             href="/dashboard/clinic/procedures"

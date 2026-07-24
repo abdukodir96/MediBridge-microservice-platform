@@ -173,8 +173,11 @@ export class ProcedureService {
 	}
 
 	// Anyone — views a single procedure (VERIFIED clinics only, same
-	// visibility rule as getClinic/getClinics)
-	public async getProcedure(procedureId: ObjectId): Promise<Procedure> {
+	// visibility rule as getClinic/getClinics). If the caller is logged in
+	// (viewerId set), also allow through when they own the procedure's
+	// clinic — otherwise the clinic's own owner couldn't open the edit form
+	// for a procedure that belongs to a not-yet-VERIFIED clinic.
+	public async getProcedure(procedureId: ObjectId, viewerId?: ObjectId): Promise<Procedure> {
 		assertValidObjectId(procedureId);
 		const procedure = await this.procedureModel.findById(procedureId).exec();
 		if (!procedure) throw new NotFoundException('Procedure not found');
@@ -182,7 +185,10 @@ export class ProcedureService {
 		const clinic = await this.clinicModel
 			.findOne({
 				_id: procedure.procedureClinicId,
-				clinicStatus: ClinicStatus.VERIFIED,
+				$or: [
+					{ clinicStatus: ClinicStatus.VERIFIED },
+					...(viewerId ? [{ clinicOwnerId: viewerId }] : []),
+				],
 			})
 			.exec();
 		if (!clinic) throw new NotFoundException('Procedure not found');

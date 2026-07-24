@@ -8,6 +8,7 @@ import {
 	ProceduresInquiry,
 } from '../../libs/dto/procedure/procedure.input';
 import { RolesGuard } from '../../libs/auth/guards/roles.guard';
+import { OptionalAuthGuard } from '../../libs/auth/guards/optional-auth.guard';
 import { Roles } from '../../libs/auth/decorators/roles.decorator';
 import { AuthMember } from '../../libs/auth/decorators/auth-member.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
@@ -60,14 +61,17 @@ export class ProcedureResolver {
 		);
 	}
 
-	// Anyone — views a single procedure
+	// Anyone — views a single procedure (owner can also view it pre-verification)
+	@UseGuards(OptionalAuthGuard)
 	@Query(() => Procedure)
 	public async getProcedure(
 		@Args('procedureId') procedureId: string,
+		@AuthMember('_id') viewerId?: ObjectId,
 	): Promise<Procedure> {
 		console.log('Query: getProcedure');
 		return await this.procedureService.getProcedure(
 			procedureId as unknown as ObjectId,
+			viewerId,
 		);
 	}
 

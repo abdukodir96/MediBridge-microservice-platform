@@ -23,7 +23,14 @@ const thumbnailTones = [
 
 export function ClinicProceduresScreen() {
   const profileImage = useProfileImage();
-  const { data, loading, error, refetch } = useQuery(GET_MY_PROCEDURES);
+  // cache-and-network (not the default cache-first): this list page fully
+  // remounts on every client-side navigation back to it (it's a leaf route,
+  // not part of the persistent clinic-dashboard layout), so without this a
+  // create/edit/delete done on another page would show stale cached results
+  // until a hard refresh.
+  const { data, loading, error, refetch } = useQuery(GET_MY_PROCEDURES, {
+    fetchPolicy: "cache-and-network",
+  });
   const [deleteProcedure] = useMutation(DELETE_PROCEDURE);
 
   const removeProcedure = async (procedure: Procedure) => {

@@ -16,6 +16,29 @@ export interface Procedure {
 	procedureImages: string[];
 }
 
+interface GetProcedureData {
+	getProcedure: Procedure;
+}
+interface GetProcedureVars {
+	procedureId: string;
+}
+
+export const GET_PROCEDURE: TypedDocumentNode<GetProcedureData, GetProcedureVars> = gql`
+	query GetProcedure($procedureId: String!) {
+		getProcedure(procedureId: $procedureId) {
+			_id
+			procedureName
+			procedureCategory
+			procedureDesc
+			procedurePriceMin
+			procedurePriceMax
+			procedureCurrency
+			procedureDuration
+			procedureImages
+		}
+	}
+`;
+
 interface GetMyProceduresData {
 	getMyProcedures: { list: Procedure[]; total: number };
 }
