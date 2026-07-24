@@ -2,99 +2,24 @@
 
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { useMutation, useQuery } from "@apollo/client/react";
 import {
   clinicNavigation,
   DashboardSidebar,
 } from "@/components/dashboard-screen";
 import { useProfileImage } from "@/components/use-profile-image";
-
-type BookingStatus =
-  | "REQUESTED"
-  | "CONFIRMED"
-  | "PAID"
-  | "COMPLETED"
-  | "CANCELLED";
+import {
+  CANCEL_BOOKING,
+  COMPLETE_BOOKING,
+  CONFIRM_BOOKING,
+  GET_CLINIC_BOOKINGS,
+  type BookingStatus,
+  type ClinicBooking,
+  type MemberCountry,
+} from "@/lib/graphql/clinic-bookings";
+import type { MemberLang } from "@/lib/graphql/clinics";
 
 type BookingFilter = "ALL" | BookingStatus;
-
-type ClinicBooking = {
-  id: number;
-  patient: string;
-  avatar: string;
-  avatarTone: string;
-  country?: string;
-  procedure: string;
-  schedule: string;
-  language?: string;
-  status: BookingStatus;
-  amount?: number;
-};
-
-const initialBookings: ClinicBooking[] = [
-  {
-    id: 1,
-    patient: "Li Mei",
-    avatar: "LM",
-    avatarTone: "from-brand-gold to-amber-700",
-    country: "🇨🇳",
-    procedure: "Rhinoplasty",
-    schedule: "prefers Aug 12, 2026",
-    language: "中文",
-    status: "REQUESTED",
-    amount: 2400,
-  },
-  {
-    id: 2,
-    patient: "Yuki Tanaka",
-    avatar: "YT",
-    avatarTone: "from-brand-teal-500 to-brand-teal-900",
-    country: "🇯🇵",
-    procedure: "Double Eyelid",
-    schedule: "prefers Sep 3, 2026",
-    language: "日本語",
-    status: "REQUESTED",
-    amount: 1200,
-  },
-  {
-    id: 3,
-    patient: "Chen H.",
-    avatar: "CH",
-    avatarTone: "from-amber-700 to-brand-gold",
-    procedure: "V-line Contour",
-    schedule: "confirmed for Aug 20, 2026",
-    status: "CONFIRMED",
-    amount: 5600,
-  },
-  {
-    id: 4,
-    patient: "Park J.",
-    avatar: "PK",
-    avatarTone: "from-brand-teal-700 to-brand-teal-900",
-    procedure: "Rhinoplasty",
-    schedule: "Jul 28, 2026",
-    status: "PAID",
-    amount: 2600,
-  },
-  {
-    id: 5,
-    patient: "Song W.",
-    avatar: "SW",
-    avatarTone: "from-brand-teal-900 to-brand-teal-500",
-    procedure: "Double Eyelid",
-    schedule: "completed Jun 2, 2026",
-    status: "COMPLETED",
-    amount: 1200,
-  },
-  {
-    id: 6,
-    patient: "Patient",
-    avatar: "?",
-    avatarTone: "from-stone-300 to-stone-500",
-    procedure: "Skin treatment",
-    schedule: "request cancelled",
-    status: "CANCELLED",
-  },
-];
 
 const filters: Array<{ value: BookingFilter; label: string }> = [
   { value: "ALL", label: "All" },
@@ -105,16 +30,87 @@ const filters: Array<{ value: BookingFilter; label: string }> = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
+const avatarTones = [
+  "from-brand-gold to-amber-700",
+  "from-brand-teal-500 to-brand-teal-900",
+  "from-amber-700 to-brand-gold",
+  "from-brand-teal-700 to-brand-teal-900",
+  "from-brand-teal-900 to-brand-teal-500",
+];
+
+const countryFlags: Record<MemberCountry, string> = {
+  CHINA: "🇨🇳",
+  JAPAN: "🇯🇵",
+  USA: "🇺🇸",
+  VIETNAM: "🇻🇳",
+  THAILAND: "🇹🇭",
+  OTHER: "",
+};
+
+const langLabels: Record<MemberLang, string> = {
+  EN: "English",
+  ZH: "中文",
+  JA: "日本語",
+  KO: "한국어",
+};
+
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 0,
 });
 
+function initialsFor(nick: string) {
+  const parts = nick.trim().split(/\s+/);
+  const initials = parts.length > 1 ? parts[0][0] + parts[1][0] : nick.slice(0, 2);
+  return initials.toUpperCase();
+}
+
+function toneFor(id: string) {
+  const hash = id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return avatarTones[hash % avatarTones.length];
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function scheduleText(booking: ClinicBooking) {
+  switch (booking.bookingStatus) {
+    case "REQUESTED":
+      return `prefers ${formatDate(booking.bookingPreferredDate)}`;
+    case "CONFIRMED":
+      return `confirmed for ${formatDate(booking.bookingConfirmedDate ?? booking.bookingPreferredDate)}`;
+    case "PAID":
+      return formatDate(booking.bookingPreferredDate);
+    case "COMPLETED":
+      return `completed ${formatDate(booking.bookingPreferredDate)}`;
+    case "CANCELLED":
+      return "request cancelled";
+  }
+}
+
 export function ClinicBookingRequestsScreen() {
   const profileImage = useProfileImage();
-  const [bookings, setBookings] = useState(initialBookings);
   const [activeFilter, setActiveFilter] = useState<BookingFilter>("ALL");
+
+  // Fetches everything once (not filtered server-side by the active tab) so
+  // every tab's count can be shown at the same time, matching the existing
+  // design — filtering itself happens client-side below.
+  const { data, loading, error } = useQuery(GET_CLINIC_BOOKINGS, {
+    variables: { input: { limit: 50 } },
+  });
+
+  const [confirmBooking, { loading: confirming }] = useMutation(CONFIRM_BOOKING);
+  const [cancelBooking, { loading: cancelling }] = useMutation(CANCEL_BOOKING);
+  const [completeBooking, { loading: completing }] = useMutation(COMPLETE_BOOKING);
+  const busy = confirming || cancelling || completing;
+
+  const bookings = useMemo(() => data?.getClinicBookings.list ?? [], [data]);
 
   const counts = useMemo(() => {
     const result: Record<BookingFilter, number> = {
@@ -126,7 +122,7 @@ export function ClinicBookingRequestsScreen() {
       CANCELLED: 0,
     };
     bookings.forEach((booking) => {
-      result[booking.status] += 1;
+      result[booking.bookingStatus] += 1;
     });
     return result;
   }, [bookings]);
@@ -135,42 +131,91 @@ export function ClinicBookingRequestsScreen() {
     () =>
       activeFilter === "ALL"
         ? bookings
-        : bookings.filter((booking) => booking.status === activeFilter),
+        : bookings.filter((booking) => booking.bookingStatus === activeFilter),
     [activeFilter, bookings],
   );
 
-  const changeStatus = async (
-    booking: ClinicBooking,
-    nextStatus: BookingStatus,
-    title: string,
-    description: string,
-  ) => {
+  const handleConfirm = async (booking: ClinicBooking) => {
     const result = await Swal.fire({
-      icon: nextStatus === "CANCELLED" ? "warning" : "question",
-      title,
-      text: description,
+      icon: "question",
+      title: "Accept this booking?",
+      text: `${money.format(booking.procedure.procedurePriceMin)} will be locked as the confirmed procedure price.`,
       showCancelButton: true,
       confirmButtonColor: "#125453",
       cancelButtonColor: "#64748b",
       confirmButtonText: "Confirm",
     });
-
     if (!result.isConfirmed) return;
 
-    setBookings((current) =>
-      current.map((item) =>
-        item.id === booking.id ? { ...item, status: nextStatus } : item,
-      ),
-    );
+    try {
+      await confirmBooking({ variables: { bookingId: booking._id } });
+      await Swal.fire({
+        icon: "success",
+        title: "Booking updated",
+        text: `${booking.patient.memberNick}'s booking is now confirmed.`,
+        confirmButtonColor: "#125453",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({ icon: "error", title: "Couldn't confirm booking", text: (err as Error).message, confirmButtonColor: "#125453" });
+    }
+  };
 
-    await Swal.fire({
-      icon: "success",
-      title: "Booking updated",
-      text: `${booking.patient}’s booking is now ${nextStatus.toLowerCase()}.`,
+  const handleDecline = async (booking: ClinicBooking, refund: boolean) => {
+    const result = await Swal.fire({
+      icon: "warning",
+      title: refund ? "Cancel and refund?" : "Decline this request?",
+      text: refund
+        ? "The booking will be cancelled and the protected payment will be returned to the patient."
+        : "The patient will be notified that the clinic declined the request.",
+      showCancelButton: true,
       confirmButtonColor: "#125453",
-      timer: 1500,
-      showConfirmButton: false,
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Confirm",
     });
+    if (!result.isConfirmed) return;
+
+    try {
+      await cancelBooking({ variables: { bookingId: booking._id } });
+      await Swal.fire({
+        icon: "success",
+        title: "Booking updated",
+        text: `${booking.patient.memberNick}'s booking is now cancelled.`,
+        confirmButtonColor: "#125453",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({ icon: "error", title: "Couldn't cancel booking", text: (err as Error).message, confirmButtonColor: "#125453" });
+    }
+  };
+
+  const handleComplete = async (booking: ClinicBooking) => {
+    const result = await Swal.fire({
+      icon: "question",
+      title: "Mark treatment complete?",
+      text: "The patient will be asked to confirm that the treatment is complete.",
+      showCancelButton: true,
+      confirmButtonColor: "#125453",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Confirm",
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await completeBooking({ variables: { bookingId: booking._id } });
+      await Swal.fire({
+        icon: "success",
+        title: "Booking updated",
+        text: `${booking.patient.memberNick}'s booking is now completed.`,
+        confirmButtonColor: "#125453",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({ icon: "error", title: "Couldn't complete booking", text: (err as Error).message, confirmButtonColor: "#125453" });
+    }
   };
 
   return (
@@ -219,29 +264,45 @@ export function ClinicBookingRequestsScreen() {
             })}
           </div>
 
-          <div
-            className="mt-4 grid h-[1160px] gap-4 overflow-y-auto overscroll-contain pr-2 sm:h-[920px] [scrollbar-gutter:stable]"
-            style={{ gridAutoRows: "calc((100% - 3rem) / 4)" }}
-          >
-            {visibleBookings.map((booking) => (
-              <BookingRequestCard
-                key={booking.id}
-                booking={booking}
-                onChangeStatus={changeStatus}
-              />
-            ))}
+          {loading ? (
+            <div className="mt-8 flex min-h-[400px] items-center justify-center">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-line border-t-brand-teal-700" />
+            </div>
+          ) : error ? (
+            <div className="mt-8 flex min-h-[400px] flex-col items-center justify-center gap-2 text-center">
+              <p className="font-serif text-2xl font-semibold text-brand-teal-900">
+                Couldn&apos;t load booking requests
+              </p>
+              <p className="max-w-md text-sm text-brand-muted">{error.message}</p>
+            </div>
+          ) : (
+            <div
+              className="mt-4 grid h-[1160px] gap-4 overflow-y-auto overscroll-contain pr-2 sm:h-[920px] [scrollbar-gutter:stable]"
+              style={{ gridAutoRows: "calc((100% - 3rem) / 4)" }}
+            >
+              {visibleBookings.map((booking) => (
+                <BookingRequestCard
+                  key={booking._id}
+                  booking={booking}
+                  busy={busy}
+                  onConfirm={() => handleConfirm(booking)}
+                  onDecline={(refund) => handleDecline(booking, refund)}
+                  onComplete={() => handleComplete(booking)}
+                />
+              ))}
 
-            {visibleBookings.length === 0 && (
-              <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-brand-line px-6 text-center">
-                <p className="font-serif text-2xl font-semibold text-brand-teal-900">
-                  No bookings in this category
-                </p>
-                <p className="mt-2 text-sm text-brand-muted">
-                  Booking requests will appear here when their status changes.
-                </p>
-              </div>
-            )}
-          </div>
+              {visibleBookings.length === 0 && (
+                <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-brand-line px-6 text-center">
+                  <p className="font-serif text-2xl font-semibold text-brand-teal-900">
+                    No bookings in this category
+                  </p>
+                  <p className="mt-2 text-sm text-brand-muted">
+                    Booking requests will appear here when their status changes.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       </div>
     </main>
@@ -250,45 +311,49 @@ export function ClinicBookingRequestsScreen() {
 
 function BookingRequestCard({
   booking,
-  onChangeStatus,
+  busy,
+  onConfirm,
+  onDecline,
+  onComplete,
 }: {
   booking: ClinicBooking;
-  onChangeStatus: (
-    booking: ClinicBooking,
-    nextStatus: BookingStatus,
-    title: string,
-    description: string,
-  ) => Promise<void>;
+  busy: boolean;
+  onConfirm: () => void;
+  onDecline: (refund: boolean) => void;
+  onComplete: () => void;
 }) {
+  const flag = booking.patient.memberCountry ? countryFlags[booking.patient.memberCountry] : "";
+  const lang = langLabels[booking.patient.memberLang];
+
   return (
     <article className="h-full overflow-hidden rounded-2xl border border-brand-line bg-white p-4 transition duration-200 hover:border-brand-teal-500 hover:shadow-lg sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">
           <span
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${booking.avatarTone} text-xs font-bold text-white`}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${toneFor(booking._id)} text-xs font-bold text-white`}
           >
-            {booking.avatar}
+            {initialsFor(booking.patient.memberNick)}
           </span>
           <div className="min-w-0">
             <p className="font-bold text-brand-ink">
-              🧑 Patient · {booking.patient} {booking.country ?? ""}
+              🧑 Patient · {booking.patient.memberNick} {flag}
             </p>
             <p className="mt-1 text-sm text-brand-muted">
-              {booking.procedure} · {booking.schedule}
-              {booking.language ? ` · ${booking.language}` : ""}
+              {booking.procedure.procedureName} · {scheduleText(booking)}
+              {lang ? ` · ${lang}` : ""}
             </p>
           </div>
         </div>
-        <StatusPill status={booking.status} />
+        <StatusPill status={booking.bookingStatus} />
       </div>
 
-      {booking.status === "REQUESTED" && booking.amount && (
+      {booking.bookingStatus === "REQUESTED" && (
         <>
           <div className="mt-4 flex flex-col gap-2 rounded-xl border border-brand-line bg-brand-cream px-4 py-3 text-sm text-brand-muted sm:flex-row sm:items-center sm:justify-between">
             <span>Price to be locked in when accepted</span>
             <div className="flex flex-wrap items-center gap-2">
               <strong className="font-serif text-lg text-brand-teal-900">
-                {money.format(booking.amount)}
+                {money.format(booking.procedure.procedurePriceMin)}
               </strong>
               <span className="rounded-md bg-brand-teal-100 px-2 py-1 text-[10px] font-bold text-brand-teal-700">
                 AUTO · PROCEDURE MINIMUM
@@ -298,29 +363,17 @@ function BookingRequestCard({
           <div className="mt-4 flex flex-wrap justify-end gap-2">
             <button
               type="button"
-              onClick={() =>
-                onChangeStatus(
-                  booking,
-                  "CONFIRMED",
-                  "Accept this booking?",
-                  `${money.format(booking.amount ?? 0)} will be locked as the confirmed procedure price.`,
-                )
-              }
-              className="min-h-11 cursor-pointer rounded-xl bg-brand-teal-700 px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-md"
+              disabled={busy}
+              onClick={onConfirm}
+              className="min-h-11 cursor-pointer rounded-xl bg-brand-teal-700 px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
             >
               Accept &amp; confirm
             </button>
             <button
               type="button"
-              onClick={() =>
-                onChangeStatus(
-                  booking,
-                  "CANCELLED",
-                  "Decline this request?",
-                  "The patient will be notified that the clinic declined the request.",
-                )
-              }
-              className="min-h-11 cursor-pointer rounded-xl border border-red-200 px-5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+              disabled={busy}
+              onClick={() => onDecline(false)}
+              className="min-h-11 cursor-pointer rounded-xl border border-red-200 px-5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Decline
             </button>
@@ -328,12 +381,12 @@ function BookingRequestCard({
         </>
       )}
 
-      {booking.status === "CONFIRMED" && (
+      {booking.bookingStatus === "CONFIRMED" && (
         <div className="mt-4 border-t border-brand-line pt-4">
           <p className="text-sm text-brand-muted">
             Locked price{" "}
             <strong className="text-brand-ink">
-              {money.format(booking.amount ?? 0)} 🔒
+              {money.format(booking.bookingAmount ?? 0)} 🔒
             </strong>
           </p>
           <p className="mt-3 text-sm italic text-brand-muted">
@@ -342,37 +395,25 @@ function BookingRequestCard({
         </div>
       )}
 
-      {booking.status === "PAID" && (
+      {booking.bookingStatus === "PAID" && (
         <div className="mt-4 border-t border-brand-line pt-4">
           <p className="text-sm text-brand-muted">
-            Paid <strong className="text-brand-ink">{money.format(booking.amount ?? 0)}</strong>
+            Paid <strong className="text-brand-ink">{money.format(booking.bookingAmount ?? 0)}</strong>
           </p>
           <div className="mt-4 flex flex-wrap justify-end gap-2">
             <button
               type="button"
-              onClick={() =>
-                onChangeStatus(
-                  booking,
-                  "COMPLETED",
-                  "Mark treatment complete?",
-                  "The patient will be asked to confirm that the treatment is complete.",
-                )
-              }
-              className="min-h-11 cursor-pointer rounded-xl bg-brand-gold px-5 text-sm font-bold text-brand-teal-900 transition hover:-translate-y-0.5 hover:shadow-md"
+              disabled={busy}
+              onClick={onComplete}
+              className="min-h-11 cursor-pointer rounded-xl bg-brand-gold px-5 text-sm font-bold text-brand-teal-900 transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
             >
               Mark treatment complete
             </button>
             <button
               type="button"
-              onClick={() =>
-                onChangeStatus(
-                  booking,
-                  "CANCELLED",
-                  "Cancel and refund?",
-                  "The booking will be cancelled and the protected payment will be returned to the patient.",
-                )
-              }
-              className="min-h-11 cursor-pointer rounded-xl border border-red-200 px-5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+              disabled={busy}
+              onClick={() => onDecline(true)}
+              className="min-h-11 cursor-pointer rounded-xl border border-red-200 px-5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel &amp; refund
             </button>
@@ -380,13 +421,13 @@ function BookingRequestCard({
         </div>
       )}
 
-      {booking.status === "COMPLETED" && (
+      {booking.bookingStatus === "COMPLETED" && (
         <p className="mt-4 border-t border-brand-line pt-4 text-sm italic text-brand-muted">
           ⏳ Escrow is held until the patient confirms treatment completion.
         </p>
       )}
 
-      {booking.status === "CANCELLED" && (
+      {booking.bookingStatus === "CANCELLED" && (
         <p className="mt-4 border-t border-brand-line pt-4 text-sm italic text-brand-muted">
           No payment is currently due for this cancelled booking.
         </p>
