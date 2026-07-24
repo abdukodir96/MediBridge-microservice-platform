@@ -35,15 +35,17 @@ export default async function Home() {
     <div className="flex flex-1 flex-col bg-white">
       {/* HERO */}
       <section className="relative isolate z-20 min-h-[calc(100svh-78px)] overflow-visible px-6 py-16 sm:px-10 sm:py-20">
-        <Image
-          src="/doctor/doctor.jpg"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="-z-20 scale-[1.01] object-cover object-center"
-          aria-hidden="true"
-        />
+        <div className="absolute inset-0 -z-20 overflow-hidden">
+          <Image
+            src="/doctor/doctor.jpg"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="scale-[1.01] object-cover object-center"
+            aria-hidden="true"
+          />
+        </div>
 
         <span className="mb-7 inline-flex items-center gap-2 rounded-full bg-brand-teal-100 px-5 py-2.5 text-base font-semibold uppercase tracking-wider text-brand-teal-500">
           ✦ 1.17M+ patients trust Korea every year
