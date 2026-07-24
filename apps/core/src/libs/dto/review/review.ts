@@ -1,5 +1,6 @@
 import { Field, ObjectType, Int } from '@nestjs/graphql';
 import type { ObjectId } from 'mongoose';
+import { Member } from '../member/member';
 
 @ObjectType()
 export class Review {
@@ -26,6 +27,10 @@ export class Review {
 
 	@Field(() => Date)
 	updatedAt: Date;
+
+	// Resolved by ReviewResolver's field resolver, not stored on the document
+	@Field(() => Member)
+	patient: Member;
 }
 
 // List + total count (pagination)

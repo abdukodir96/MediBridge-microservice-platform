@@ -1,5 +1,5 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, ResolveField, Parent, Resolver } from '@nestjs/graphql';
 import type { ObjectId } from 'mongoose';
 import { BookingService } from './booking.service';
 import { Booking, Bookings } from '../../libs/dto/booking/booking';
@@ -12,10 +12,21 @@ import { AuthGuard } from '../../libs/auth/guards/auth.guard';
 import { Roles } from '../../libs/auth/decorators/roles.decorator';
 import { AuthMember } from '../../libs/auth/decorators/auth-member.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
+import { MemberService } from '../member/member.service';
+import { ClinicService } from '../clinic/clinic.service';
+import { ProcedureService } from '../procedure/procedure.service';
+import { Member } from '../../libs/dto/member/member';
+import { Clinic } from '../../libs/dto/clinic/clinic';
+import { Procedure } from '../../libs/dto/procedure/procedure';
 
-@Resolver()
+@Resolver(() => Booking)
 export class BookingResolver {
-	constructor(private readonly bookingService: BookingService) {}
+	constructor(
+		private readonly bookingService: BookingService,
+		private readonly memberService: MemberService,
+		private readonly clinicService: ClinicService,
+		private readonly procedureService: ProcedureService,
+	) {}
 
 	// PATIENT — creates a booking
 	@Roles(MemberType.PATIENT)
@@ -127,5 +138,20 @@ export class BookingResolver {
 	): Promise<Bookings> {
 		console.log('Query: getClinicBookings');
 		return await this.bookingService.getClinicBookings(ownerId, input);
+	}
+
+	@ResolveField('patient', () => Member)
+	async resolvePatient(@Parent() booking: Booking): Promise<Member> {
+		return this.memberService.getMember(booking.bookingPatientId);
+	}
+
+	@ResolveField('clinic', () => Clinic)
+	async resolveClinic(@Parent() booking: Booking): Promise<Clinic> {
+		return this.clinicService.getClinic(booking.bookingClinicId);
+	}
+
+	@ResolveField('procedure', () => Procedure)
+	async resolveProcedure(@Parent() booking: Booking): Promise<Procedure> {
+		return this.procedureService.getProcedure(booking.bookingProcedureId);
 	}
 }

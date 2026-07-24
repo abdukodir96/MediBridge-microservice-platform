@@ -1,5 +1,5 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, ResolveField, Parent, Resolver } from '@nestjs/graphql';
 import type { ObjectId } from 'mongoose';
 import { ReviewService } from './review.service';
 import { Review, Reviews } from '../../libs/dto/review/review';
@@ -8,10 +8,15 @@ import { RolesGuard } from '../../libs/auth/guards/roles.guard';
 import { Roles } from '../../libs/auth/decorators/roles.decorator';
 import { AuthMember } from '../../libs/auth/decorators/auth-member.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
+import { MemberService } from '../member/member.service';
+import { Member } from '../../libs/dto/member/member';
 
-@Resolver()
+@Resolver(() => Review)
 export class ReviewResolver {
-	constructor(private readonly reviewService: ReviewService) {}
+	constructor(
+		private readonly reviewService: ReviewService,
+		private readonly memberService: MemberService,
+	) {}
 
 	// PATIENT — reviews their own completed booking
 	@Roles(MemberType.PATIENT)
@@ -36,5 +41,10 @@ export class ReviewResolver {
 			clinicId as unknown as ObjectId,
 			input,
 		);
+	}
+
+	@ResolveField('patient', () => Member)
+	async resolvePatient(@Parent() review: Review): Promise<Member> {
+		return this.memberService.getMember(review.reviewPatientId);
 	}
 }

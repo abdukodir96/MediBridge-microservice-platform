@@ -7,6 +7,9 @@ import BookingSchema from '../../libs/schema/booking.model';
 import ClinicSchema from '../../libs/schema/clinic.model';
 import ProcedureSchema from '../../libs/schema/procedure.model';
 import { AuthModule } from '../auth/auth.module';
+import { MemberModule } from '../member/member.module';
+import { ClinicModule } from '../clinic/clinic.module';
+import { ProcedureModule } from '../procedure/procedure.module';
 
 @Module({
 	imports: [
@@ -16,6 +19,10 @@ import { AuthModule } from '../auth/auth.module';
 			{ name: 'Procedure', schema: ProcedureSchema },
 		]),
 		AuthModule, // RolesGuard/AuthGuard depend on AuthService
+		// For the Booking type's patient/clinic/procedure field resolvers
+		MemberModule,
+		ClinicModule,
+		ProcedureModule,
 		ClientsModule.register([
 			{
 				name: 'PAYMENT_SERVICE',

@@ -1,6 +1,9 @@
 import { Field, ObjectType, Int, Float } from '@nestjs/graphql';
 import type { ObjectId } from 'mongoose';
 import { BookingStatus } from '../../enums/booking.enum';
+import { Member } from '../member/member';
+import { Clinic } from '../clinic/clinic';
+import { Procedure } from '../procedure/procedure';
 
 @ObjectType()
 export class Booking {
@@ -47,6 +50,17 @@ export class Booking {
 
 	@Field(() => Date)
 	updatedAt: Date;
+
+	// Resolved by BookingResolver's field resolvers, not stored on the
+	// document — schema-level declaration only, no initializer needed
+	@Field(() => Member)
+	patient: Member;
+
+	@Field(() => Clinic)
+	clinic: Clinic;
+
+	@Field(() => Procedure)
+	procedure: Procedure;
 }
 
 // List + total count (pagination)
