@@ -4,10 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@apollo/client/react";
+import Swal from "sweetalert2";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { useProfileImage } from "@/components/use-profile-image";
 import { useClinicProfile } from "@/components/clinic-profile-store";
 import { GET_MY_BOOKINGS, type BookingStatus } from "@/lib/graphql/bookings";
+import { CONFIRM_COMPLETION } from "@/lib/graphql/payment";
 
 export type DashboardRole = "patient" | "clinic";
 
@@ -251,8 +253,41 @@ function PatientBookings() {
   const { data, loading, error } = useQuery(GET_MY_BOOKINGS, {
     variables: { input: { limit: 50 } },
   });
+  const [confirmCompletion, { loading: confirming }] = useMutation(CONFIRM_COMPLETION);
 
   const bookings = data?.getMyBookings.list ?? [];
+
+  const handleConfirmCompletion = async (bookingId: string) => {
+    const result = await Swal.fire({
+      icon: "question",
+      title: "Confirm treatment is complete?",
+      text: "This releases the escrowed payment to the clinic.",
+      showCancelButton: true,
+      confirmButtonColor: "#125453",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Confirm & release",
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await confirmCompletion({ variables: { bookingId } });
+      await Swal.fire({
+        icon: "success",
+        title: "Payment released",
+        text: "The clinic has been paid. Thank you!",
+        confirmButtonColor: "#125453",
+        timer: 1800,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Couldn't release payment",
+        text: (err as Error).message,
+        confirmButtonColor: "#125453",
+      });
+    }
+  };
 
   return (
     <section className="mt-9" id="bookings">
@@ -307,6 +342,16 @@ function PatientBookings() {
                   >
                     Pay now →
                   </Link>
+                )}
+                {booking.bookingStatus === "COMPLETED" && (
+                  <button
+                    type="button"
+                    disabled={confirming}
+                    onClick={() => handleConfirmCompletion(booking._id)}
+                    className="mt-2 inline-flex min-h-9 cursor-pointer items-center rounded-lg bg-brand-gold px-4 text-xs font-bold text-brand-teal-900 transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    ✓ Confirm & release payment
+                  </button>
                 )}
               </div>
             </article>
