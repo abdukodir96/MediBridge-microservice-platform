@@ -4,8 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useQuery } from "@apollo/client/react";
 import { useProfileImage } from "@/components/use-profile-image";
 import { useClinicProfile } from "@/components/clinic-profile-store";
+import { GET_MY_BOOKINGS, type BookingStatus } from "@/lib/graphql/bookings";
 
 export type DashboardRole = "patient" | "clinic";
 
@@ -15,7 +17,7 @@ export type SidebarItem = {
   href: string;
 };
 
-const patientNavigation: SidebarItem[] = [
+export const patientNavigation: SidebarItem[] = [
   { icon: "👤", label: "My Page", href: "/dashboard/patient" },
   { icon: "⌕", label: "Find clinics", href: "/clinics" },
   { icon: "💬", label: "Messages", href: "/dashboard/messages" },
@@ -49,29 +51,35 @@ const clinicStats: DashboardStat[] = [
   { label: "Rating", value: "4.9", detail: "312 patient reviews" },
 ];
 
-const patientBookings = [
-  {
-    clinic: "Seoul Line Clinic",
-    detail: "Rhinoplasty · Aug 12, 2026 · 📍 Gangnam",
-    status: "Paid · Escrow held",
-    amount: "$2,520",
-    tone: "success",
-  },
-  {
-    clinic: "Apgujeong Derma Center",
-    detail: "Skin treatment · Awaiting clinic reply",
-    status: "Requested",
-    amount: "",
-    tone: "pending",
-  },
-  {
-    clinic: "Banobagi Aesthetic",
-    detail: "Face contour · Sep 3, 2026 · 📍 Sinsa-dong",
-    status: "Confirmed",
-    amount: "$3,100",
-    tone: "confirmed",
-  },
-];
+const statusLabels: Record<BookingStatus, string> = {
+  REQUESTED: "Requested",
+  CONFIRMED: "Confirmed",
+  PAID: "Paid · Escrow held",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
+const statusTones: Record<BookingStatus, string> = {
+  REQUESTED: "bg-amber-100 text-amber-700",
+  CONFIRMED: "bg-brand-teal-100 text-brand-teal-700",
+  PAID: "bg-emerald-100 text-emerald-700",
+  COMPLETED: "bg-stone-100 text-stone-600",
+  CANCELLED: "bg-red-50 text-red-600",
+};
+
+const money = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+function formatBookingDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 const initialRequests = [
   {
@@ -240,48 +248,71 @@ export function DashboardSidebar({
 }
 
 function PatientBookings() {
+  const { data, loading, error } = useQuery(GET_MY_BOOKINGS, {
+    variables: { input: { limit: 50 } },
+  });
+
+  const bookings = data?.getMyBookings.list ?? [];
+
   return (
     <section className="mt-9" id="bookings">
       <div className="mb-4">
         <h2 className="text-lg font-bold text-brand-ink">Upcoming bookings</h2>
       </div>
-      <div className="max-h-[340px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
-        {patientBookings.map((booking) => (
-          <article
-            key={booking.clinic}
-            className="flex flex-col gap-4 rounded-xl border border-brand-line p-4 transition hover:border-brand-teal-500 hover:shadow-md sm:flex-row sm:items-center"
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-4">
-              <span className="h-14 w-14 shrink-0 rounded-xl bg-linear-to-br from-brand-teal-500 to-brand-teal-900" />
-              <div className="min-w-0">
-                <Link
-                  href="/clinics/seoul-line-clinic"
-                  className="font-bold text-brand-ink transition hover:text-brand-teal-700"
-                >
-                  {booking.clinic}
-                </Link>
-                <p className="mt-1 truncate text-sm text-brand-muted">{booking.detail}</p>
+
+      {loading ? (
+        <div className="flex min-h-[150px] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-line border-t-brand-teal-700" />
+        </div>
+      ) : error ? (
+        <p className="rounded-xl border border-dashed border-brand-line px-5 py-6 text-center text-sm text-brand-muted">
+          Couldn&apos;t load your bookings — {error.message}
+        </p>
+      ) : bookings.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-brand-line px-5 py-10 text-center text-sm text-brand-muted">
+          No bookings yet. Find a clinic to get started.
+        </div>
+      ) : (
+        <div className="max-h-[340px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
+          {bookings.map((booking) => (
+            <article
+              key={booking._id}
+              className="flex flex-col gap-4 rounded-xl border border-brand-line p-4 transition hover:border-brand-teal-500 hover:shadow-md sm:flex-row sm:items-center"
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-4">
+                <span className="h-14 w-14 shrink-0 rounded-xl bg-linear-to-br from-brand-teal-500 to-brand-teal-900" />
+                <div className="min-w-0">
+                  <p className="font-bold text-brand-ink">{booking.clinic.clinicName}</p>
+                  <p className="mt-1 truncate text-sm text-brand-muted">
+                    {booking.procedure.procedureName} ·{" "}
+                    {booking.bookingStatus === "REQUESTED"
+                      ? `prefers ${formatBookingDate(booking.bookingPreferredDate)}`
+                      : formatBookingDate(booking.bookingConfirmedDate ?? booking.bookingPreferredDate)}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
-              <span
-                className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold uppercase ${
-                  booking.tone === "success"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : booking.tone === "pending"
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-brand-teal-100 text-brand-teal-700"
-                }`}
-              >
-                {booking.status}
-              </span>
-              {booking.amount && (
-                <p className="mt-2 font-bold text-brand-teal-900">{booking.amount}</p>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
+              <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
+                <span
+                  className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold uppercase ${statusTones[booking.bookingStatus]}`}
+                >
+                  {statusLabels[booking.bookingStatus]}
+                </span>
+                {booking.bookingAmount != null && (
+                  <p className="mt-2 font-bold text-brand-teal-900">{money.format(booking.bookingAmount)}</p>
+                )}
+                {booking.bookingStatus === "CONFIRMED" && (
+                  <Link
+                    href={`/dashboard/patient/bookings/${booking._id}/pay`}
+                    className="mt-2 inline-flex min-h-9 items-center rounded-lg bg-brand-teal-700 px-4 text-xs font-bold text-white transition hover:bg-brand-teal-900"
+                  >
+                    Pay now →
+                  </Link>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
