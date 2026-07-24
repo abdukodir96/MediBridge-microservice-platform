@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import Swal from "sweetalert2";
+import { useMutation, useQuery } from "@apollo/client/react";
 import {
   clinicNavigation,
   DashboardSidebar,
 } from "@/components/dashboard-screen";
-import {
-  deleteClinicProcedure,
-  useClinicProcedures,
-  type ClinicProcedure,
-} from "@/components/clinic-procedure-store";
 import { useProfileImage } from "@/components/use-profile-image";
+import {
+  DELETE_PROCEDURE,
+  GET_MY_PROCEDURES,
+  type Procedure,
+} from "@/lib/graphql/procedures";
 
 const thumbnailTones = [
   "from-brand-teal-500 to-brand-teal-900",
@@ -22,13 +23,14 @@ const thumbnailTones = [
 
 export function ClinicProceduresScreen() {
   const profileImage = useProfileImage();
-  const { procedures } = useClinicProcedures();
+  const { data, loading, error, refetch } = useQuery(GET_MY_PROCEDURES);
+  const [deleteProcedure] = useMutation(DELETE_PROCEDURE);
 
-  const removeProcedure = async (procedure: ClinicProcedure) => {
+  const removeProcedure = async (procedure: Procedure) => {
     const result = await Swal.fire({
       icon: "warning",
       title: "Are you sure?",
-      text: `Do you really want to delete ${procedure.name}? It will no longer be visible to patients.`,
+      text: `Do you really want to delete ${procedure.procedureName}? It will no longer be visible to patients.`,
       showCancelButton: true,
       confirmButtonText: "Yes, delete",
       cancelButtonText: "No, keep it",
@@ -38,14 +40,55 @@ export function ClinicProceduresScreen() {
     });
     if (!result.isConfirmed) return;
 
-    deleteClinicProcedure(procedure.id);
-    await Swal.fire({
-      icon: "success",
-      title: "Procedure deleted",
-      timer: 1400,
-      showConfirmButton: false,
-    });
+    try {
+      await deleteProcedure({ variables: { procedureId: procedure._id } });
+      await refetch();
+      await Swal.fire({
+        icon: "success",
+        title: "Procedure deleted",
+        timer: 1400,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Couldn't delete procedure",
+        text: (err as Error).message,
+        confirmButtonColor: "#125453",
+      });
+    }
   };
+
+  if (loading) {
+    return (
+      <main className="flex flex-1 items-center justify-center bg-white py-4 lg:py-5">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-line border-t-brand-teal-700" />
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="flex-1 bg-white py-4 lg:py-5">
+        <div className="grid min-h-[680px] w-full overflow-hidden border border-brand-line bg-white lg:grid-cols-[310px_minmax(0,1fr)]">
+          <DashboardSidebar
+            role="clinic"
+            navigation={clinicNavigation}
+            profileImage={profileImage}
+            activeLabel="Procedures"
+          />
+          <section className="flex min-w-0 flex-col items-center justify-center gap-2 px-5 py-7 text-center sm:px-8 lg:px-10 lg:py-9">
+            <p className="font-serif text-2xl font-semibold text-brand-teal-900">
+              Couldn&apos;t load procedures
+            </p>
+            <p className="max-w-md text-sm text-brand-muted">{error.message}</p>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  const procedures = data?.getMyProcedures.list ?? [];
 
   return (
     <main className="flex-1 bg-white py-4 lg:py-5">
@@ -78,7 +121,7 @@ export function ClinicProceduresScreen() {
           <div className="mt-8 max-h-[390px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
             {procedures.map((procedure, index) => (
               <article
-                key={procedure.id}
+                key={procedure._id}
                 className="flex flex-col gap-4 rounded-2xl border border-brand-line bg-white p-4 transition duration-200 hover:border-brand-teal-500 hover:shadow-lg md:flex-row md:items-center"
               >
                 <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -88,26 +131,26 @@ export function ClinicProceduresScreen() {
                   />
                   <div className="min-w-0">
                     <h2 className="truncate text-base font-bold text-brand-ink">
-                      {procedure.name}
+                      {procedure.procedureName}
                     </h2>
                     <span className="mt-2 inline-flex rounded-full bg-brand-teal-100 px-3 py-1 text-xs font-semibold text-brand-teal-700">
-                      {procedure.category}
+                      {formatCategory(procedure.procedureCategory)}
                     </span>
                     <p className="mt-2 text-sm text-brand-muted">
-                      Recovery: {procedure.recoveryDays} {procedure.recoveryDays === 1 ? "day" : "days"}
+                      Duration: {procedure.procedureDuration} {procedure.procedureDuration === 1 ? "day" : "days"}
                     </p>
                   </div>
                 </div>
 
                 <div className="md:min-w-[175px] md:text-right">
                   <p className="font-serif text-lg font-semibold text-brand-teal-900">
-                    {formatMoney(procedure.priceMin, procedure.currency)}–{formatMoney(procedure.priceMax, procedure.currency)}
+                    {formatMoney(procedure.procedurePriceMin, procedure.procedureCurrency)}–{formatMoney(procedure.procedurePriceMax, procedure.procedureCurrency)}
                   </p>
                 </div>
 
                 <div className="flex flex-wrap justify-end gap-2">
                   <Link
-                    href={`/dashboard/clinic/procedures/${procedure.id}/edit`}
+                    href={`/dashboard/clinic/procedures/${procedure._id}/edit`}
                     className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl border border-brand-line px-4 text-sm font-semibold text-brand-muted transition hover:border-brand-teal-500 hover:bg-brand-cream hover:text-brand-teal-700"
                   >
                     Edit
@@ -152,4 +195,8 @@ function formatMoney(value: number, currency: "USD" | "KRW") {
     currency,
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatCategory(category: string) {
+  return category.charAt(0) + category.slice(1).toLowerCase();
 }

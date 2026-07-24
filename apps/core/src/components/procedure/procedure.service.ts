@@ -79,6 +79,27 @@ export class ProcedureService {
 		}
 	}
 
+	// CLINIC role — lists the caller's own procedures, regardless of the
+	// clinic's verification status (mirrors getMyClinic: an owner must be
+	// able to manage procedures while PENDING, before getProceduresByClinic's
+	// VERIFIED filter would ever let them through)
+	public async getMyProcedures(ownerId: ObjectId): Promise<Procedures> {
+		const clinic = await this.clinicModel.findOne({ clinicOwnerId: ownerId }).exec();
+		if (!clinic) {
+			throw new NotFoundException('You have not created a clinic yet');
+		}
+
+		const [list, total] = await Promise.all([
+			this.procedureModel
+				.find({ procedureClinicId: clinic._id })
+				.sort({ createdAt: -1 })
+				.exec(),
+			this.procedureModel.countDocuments({ procedureClinicId: clinic._id }),
+		]);
+
+		return { list, total };
+	}
+
 	// Anyone — lists procedures of a given clinic (VERIFIED clinics only,
 	// same visibility rule as getClinic/getClinics)
 	public async getProceduresByClinic(clinicId: ObjectId): Promise<Procedures> {

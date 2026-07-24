@@ -28,6 +28,18 @@ export class ProcedureResolver {
 		return await this.procedureService.createProcedure(ownerId, input);
 	}
 
+	// CLINIC role — lists the caller's own procedures (no VERIFIED filter,
+	// same reasoning as getMyClinic)
+	@Roles(MemberType.CLINIC)
+	@UseGuards(RolesGuard)
+	@Query(() => Procedures)
+	public async getMyProcedures(
+		@AuthMember('_id') ownerId: ObjectId,
+	): Promise<Procedures> {
+		console.log('Query: getMyProcedures');
+		return await this.procedureService.getMyProcedures(ownerId);
+	}
+
 	// Anyone — searches procedures across all clinics (filter + pagination)
 	@Query(() => Procedures)
 	public async getProcedures(
