@@ -14,10 +14,13 @@ export type MemberLang = 'EN' | 'ZH' | 'JA' | 'KO';
 
 export type ClinicSort = 'TOP_RATED' | 'MOST_REVIEWED' | 'PRICE_LOW' | 'PRICE_HIGH';
 
+export type ClinicStatus = 'PENDING' | 'VERIFIED' | 'SUSPENDED';
+
 // ---- Types (backend Clinic ObjectType bilan bir xil maydonlar) ----
 export interface Clinic {
 	_id: string;
 	clinicName: string;
+	clinicStatus?: ClinicStatus;
 	clinicDesc: string;
 	clinicAddress: string;
 	clinicImages: string[];

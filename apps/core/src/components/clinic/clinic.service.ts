@@ -76,6 +76,22 @@ export class ClinicService {
 		return clinic;
 	}
 
+	// CLINIC role — finds its own clinic (via token)
+	//
+	// No status filter here (unlike getClinic) — deliberately. The owner must
+	// be able to see its own PENDING clinic too (e.g. to show a "not verified
+	// yet" banner). VERIFIED-only filtering is a patient-facing visibility
+	// rule (getClinic/getClinics), not an ownership rule.
+	public async getMyClinic(ownerId: ObjectId): Promise<Clinic> {
+		const clinic = await this.clinicModel
+			.findOne({ clinicOwnerId: ownerId })
+			.exec();
+		if (!clinic) {
+			throw new NotFoundException('You have not created a clinic yet');
+		}
+		return clinic;
+	}
+
 	// Patient — searches clinics (filter + sort + pagination, VERIFIED only).
 	// Price filter/sort reach across into Procedure via $lookup, since price
 	// lives on Procedure, not Clinic — a clinic matches the price window if at

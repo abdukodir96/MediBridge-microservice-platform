@@ -44,6 +44,17 @@ export class ClinicResolver {
 		return await this.clinicService.getClinic(clinicId as unknown as ObjectId);
 	}
 
+	// CLINIC role — which clinic is "mine" (via token, no args)
+	@Roles(MemberType.CLINIC)
+	@UseGuards(RolesGuard)
+	@Query(() => Clinic)
+	public async getMyClinic(
+		@AuthMember('_id') ownerId: ObjectId,
+	): Promise<Clinic> {
+		console.log('Query: getMyClinic');
+		return await this.clinicService.getMyClinic(ownerId);
+	}
+
 	// CLINIC role — updates its own clinic
 	@Roles(MemberType.CLINIC)
 	@UseGuards(RolesGuard)
