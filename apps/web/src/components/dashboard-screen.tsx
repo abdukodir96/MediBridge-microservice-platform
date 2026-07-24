@@ -189,16 +189,21 @@ export function DashboardSidebar({
   profileImage,
   activeLabel,
   identityActive = false,
+  identityName,
 }: {
   role: DashboardRole;
   navigation: SidebarItem[];
   profileImage: string;
   activeLabel: string;
   identityActive?: boolean;
+  // Real clinic name (from useClinic()), passed by screens that have it.
+  // Falls back to the mock clinic-profile store where a caller hasn't been
+  // wired to real data yet.
+  identityName?: string;
 }) {
   const isPatient = role === "patient";
   const { profile: clinicProfile } = useClinicProfile();
-  const clinicIdentityName = clinicProfile.name.replace(/\s+Clinic$/i, "");
+  const clinicIdentityName = (identityName ?? clinicProfile.name).replace(/\s+Clinic$/i, "");
 
   return (
     <aside className="flex border-b border-brand-line bg-[#fdfcf9] lg:min-h-full lg:flex-col lg:border-b-0 lg:border-r">
@@ -230,7 +235,7 @@ export function DashboardSidebar({
         >
           <Image
             src={profileImage}
-            alt={isPatient ? "Wang Lei" : clinicProfile.name}
+            alt={isPatient ? "Wang Lei" : clinicIdentityName}
             width={44}
             height={44}
             className="h-11 w-11 rounded-full border border-brand-line object-cover"

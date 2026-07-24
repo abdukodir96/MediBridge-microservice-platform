@@ -4,6 +4,7 @@ import {
 	IsOptional,
 	Length,
 	IsArray,
+	ArrayNotEmpty,
 	Min,
 	Max,
 	IsEnum,
@@ -27,8 +28,8 @@ export class ClinicInput {
 	@Field(() => String, { nullable: true })
 	clinicDesc?: string;
 
-	@IsNotEmpty()
 	@IsArray()
+	@ArrayNotEmpty()
 	@Field(() => [ClinicSpecialty])
 	clinicSpecialties: ClinicSpecialty[];
 

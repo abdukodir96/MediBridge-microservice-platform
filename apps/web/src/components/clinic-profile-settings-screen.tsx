@@ -8,33 +8,27 @@ import {
   useState,
 } from "react";
 import Swal from "sweetalert2";
+import { useMutation } from "@apollo/client/react";
 import {
   clinicNavigation,
   DashboardSidebar,
 } from "@/components/dashboard-screen";
-import {
-  saveClinicProfile,
-  useClinicProfile,
-  type ClinicProfile,
-} from "@/components/clinic-profile-store";
 import { useProfileImage } from "@/components/use-profile-image";
+import { useClinic } from "@/context/clinic-context";
+import { UPDATE_CLINIC } from "@/lib/graphql/clinic-settings";
+import type { Clinic, ClinicSpecialty, MemberLang } from "@/lib/graphql/clinics";
+import { titleCaseEnum, langLabel } from "@/lib/clinic-format";
 
-const specialtyOptions = [
-  "Plastic Surgery",
-  "Dermatology",
-  "Dental",
-  "Ophthalmology",
-  "Hair Transplant",
-  "Orthopedics",
+const SPECIALTY_OPTIONS: ClinicSpecialty[] = [
+  "PLASTIC_SURGERY",
+  "DERMATOLOGY",
+  "DENTAL",
+  "OPHTHALMOLOGY",
+  "HAIR_TRANSPLANT",
+  "ORTHOPEDICS",
 ];
 
-const languageOptions = [
-  "English",
-  "中文 Chinese",
-  "日本語 Japanese",
-  "한국어 Korean",
-  "O‘zbek tili",
-];
+const LANG_OPTIONS: MemberLang[] = ["EN", "ZH", "JA", "KO"];
 
 const galleryTones = [
   "from-brand-teal-500 to-brand-teal-900",
@@ -47,7 +41,7 @@ const MAX_GALLERY_IMAGES = 10;
 
 export function ClinicProfileSettingsScreen() {
   const profileImage = useProfileImage();
-  const { profile } = useClinicProfile();
+  const { clinic } = useClinic();
 
   return (
     <main className="relative z-20 flex-1 bg-white py-4 lg:py-5">
@@ -58,6 +52,7 @@ export function ClinicProfileSettingsScreen() {
           profileImage={profileImage}
           activeLabel=""
           identityActive
+          identityName={clinic.clinicName}
         />
 
         <section className="min-w-0 px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
@@ -70,7 +65,7 @@ export function ClinicProfileSettingsScreen() {
             </p>
           </header>
 
-          <ClinicProfileForm profile={profile} />
+          <ClinicProfileForm clinic={clinic} />
         </section>
       </div>
     </main>
@@ -90,19 +85,21 @@ function createStoredGalleryItems(images: string[]): GalleryItem[] {
   }));
 }
 
-function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
+function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryScrollRef = useRef<HTMLDivElement>(null);
   const previewUrlsRef = useRef(new Set<string>());
-  const [specialties, setSpecialties] = useState(profile.specialties);
-  const [languages, setLanguages] = useState(profile.languages);
+  const [specialties, setSpecialties] = useState<ClinicSpecialty[]>(clinic.clinicSpecialties);
+  const [langs, setLangs] = useState<MemberLang[]>(clinic.clinicLangs);
   const [gallery, setGallery] = useState<GalleryItem[]>(() =>
-    createStoredGalleryItems(profile.gallery),
+    createStoredGalleryItems(clinic.clinicImages),
   );
-  const savedSpecialtiesRef = useRef(profile.specialties);
-  const savedLanguagesRef = useRef(profile.languages);
+  const savedSpecialtiesRef = useRef(specialties);
+  const savedLangsRef = useRef(langs);
   const savedGalleryRef = useRef(gallery);
+
+  const [updateClinic, { loading, error }] = useMutation(UPDATE_CLINIC);
 
   useEffect(() => {
     const previewUrls = previewUrlsRef.current;
@@ -113,14 +110,15 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
     };
   }, []);
 
-  const toggleItem = (
-    item: string,
-    setter: React.Dispatch<React.SetStateAction<string[]>>,
-  ) => {
-    setter((current) =>
-      current.includes(item)
-        ? current.filter((value) => value !== item)
-        : [...current, item],
+  const toggleSpecialty = (item: ClinicSpecialty) => {
+    setSpecialties((current) =>
+      current.includes(item) ? current.filter((value) => value !== item) : [...current, item],
+    );
+  };
+
+  const toggleLang = (item: MemberLang) => {
+    setLangs((current) =>
+      current.includes(item) ? current.filter((value) => value !== item) : [...current, item],
     );
   };
 
@@ -226,6 +224,8 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
 
   const submitProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (specialties.length === 0) return;
+
     const formData = new FormData(event.currentTarget);
     const name = String(formData.get("name") ?? "").trim();
     const address = String(formData.get("address") ?? "").trim();
@@ -241,33 +241,46 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
       return;
     }
 
-    saveClinicProfile({
-      name,
-      address,
-      description,
-      specialties,
-      languages,
-      gallery: gallery.map((item) => item.name),
-    });
+    try {
+      await updateClinic({
+        variables: {
+          clinicId: clinic._id,
+          input: {
+            clinicName: name,
+            clinicAddress: address,
+            clinicDesc: description || undefined,
+            clinicSpecialties: specialties,
+            clinicLangs: langs,
+          },
+        },
+      });
 
-    savedSpecialtiesRef.current = specialties;
-    savedLanguagesRef.current = languages;
-    savedGalleryRef.current = gallery;
+      savedSpecialtiesRef.current = specialties;
+      savedLangsRef.current = langs;
+      savedGalleryRef.current = gallery;
 
-    await Swal.fire({
-      icon: "success",
-      title: "Clinic profile updated",
-      text: "Your public clinic information has been saved.",
-      confirmButtonColor: "#125453",
-      timer: 1600,
-      showConfirmButton: false,
-    });
+      await Swal.fire({
+        icon: "success",
+        title: "Clinic profile updated",
+        text: "Your public clinic information has been saved.",
+        confirmButtonColor: "#125453",
+        timer: 1600,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Couldn't save clinic profile",
+        text: (err as Error).message,
+        confirmButtonColor: "#125453",
+      });
+    }
   };
 
   const cancelChanges = () => {
     formRef.current?.reset();
     setSpecialties(savedSpecialtiesRef.current);
-    setLanguages(savedLanguagesRef.current);
+    setLangs(savedLangsRef.current);
 
     const savedPreviewUrls = new Set(
       savedGalleryRef.current
@@ -285,25 +298,11 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
 
   return (
     <form ref={formRef} onSubmit={submitProfile} className="mt-7">
-      <div className="flex flex-col gap-4 rounded-2xl border border-brand-teal-100 bg-linear-to-r from-brand-teal-100 to-brand-cream px-5 py-4 sm:flex-row sm:items-center">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 font-bold text-white">
-          ✓
-        </span>
-        <div>
-          <p className="font-bold text-brand-teal-900">Verified clinic</p>
-          <p className="mt-0.5 text-sm text-brand-muted">
-            Status is set by MediBridge admin review and cannot be edited here.
-          </p>
-        </div>
-        <span className="self-start rounded-md border border-brand-line bg-white px-2.5 py-1 text-[10px] font-bold text-brand-muted sm:ml-auto sm:self-center">
-          READ-ONLY
-        </span>
-      </div>
+      <VerificationBadge status={clinic.clinicStatus} />
 
-      <div className="mt-5 grid gap-3 rounded-xl bg-brand-cream p-4 sm:grid-cols-3">
-        <ReadOnlyStat label="Rating" value="4.9 ★" />
-        <ReadOnlyStat label="Reviews" value="312" />
-        <ReadOnlyStat label="Member since" value="2024" />
+      <div className="mt-5 grid gap-3 rounded-xl bg-brand-cream p-4 sm:grid-cols-2">
+        <ReadOnlyStat label="Rating" value={`${clinic.clinicRating.toFixed(1)} ★`} />
+        <ReadOnlyStat label="Reviews" value={String(clinic.clinicReviewCount)} />
       </div>
 
       <div className="mt-7 grid gap-x-6 gap-y-5 md:grid-cols-2">
@@ -311,7 +310,7 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
           <input
             required
             name="name"
-            defaultValue={profile.name}
+            defaultValue={clinic.clinicName}
             className={inputClass}
           />
         </ProfileField>
@@ -319,7 +318,7 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
           <input
             required
             name="address"
-            defaultValue={profile.address}
+            defaultValue={clinic.clinicAddress}
             className={inputClass}
           />
         </ProfileField>
@@ -328,7 +327,7 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
           <ProfileField label="Description">
             <textarea
               name="description"
-              defaultValue={profile.description}
+              defaultValue={clinic.clinicDesc}
               rows={4}
               className={inputClass + " resize-y py-3"}
             />
@@ -338,9 +337,10 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
         <div className="md:col-span-2">
           <ProfileField label="Specialties" required hint="Select all that apply">
             <MultiSelectPills
-              options={specialtyOptions}
+              options={SPECIALTY_OPTIONS}
               selected={specialties}
-              onToggle={(item) => toggleItem(item, setSpecialties)}
+              onToggle={toggleSpecialty}
+              formatLabel={titleCaseEnum}
               label="Clinic specialties"
             />
           </ProfileField>
@@ -349,9 +349,10 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
         <div className="md:col-span-2">
           <ProfileField label="Languages spoken">
             <MultiSelectPills
-              options={languageOptions}
-              selected={languages}
-              onToggle={(item) => toggleItem(item, setLanguages)}
+              options={LANG_OPTIONS}
+              selected={langs}
+              onToggle={toggleLang}
+              formatLabel={langLabel}
               label="Languages spoken"
             />
           </ProfileField>
@@ -458,12 +459,15 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
         </div>
       </div>
 
+      {error && <p className="mt-4 text-sm text-red-600">{error.message}</p>}
+
       <div className="mt-7 flex flex-wrap justify-end gap-3 border-t border-brand-line pt-6">
         <button
           type="submit"
-          className="min-h-12 cursor-pointer rounded-xl bg-brand-teal-700 px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-md"
+          disabled={loading || specialties.length === 0}
+          className="min-h-12 cursor-pointer rounded-xl bg-brand-teal-700 px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
         >
-          Save changes
+          {loading ? "Saving..." : "Save changes"}
         </button>
         <button
           type="button"
@@ -477,15 +481,68 @@ function ClinicProfileForm({ profile }: { profile: ClinicProfile }) {
   );
 }
 
-function MultiSelectPills({
+function VerificationBadge({ status }: { status?: string }) {
+  if (status === "PENDING") {
+    return (
+      <div className="flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 sm:flex-row sm:items-center">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 font-bold text-white">
+          ⏳
+        </span>
+        <div>
+          <p className="font-bold text-amber-800">Awaiting verification</p>
+          <p className="mt-0.5 text-sm text-brand-muted">
+            An admin will review your clinic before it appears to patients.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "SUSPENDED") {
+    return (
+      <div className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 sm:flex-row sm:items-center">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-600 font-bold text-white">
+          !
+        </span>
+        <div>
+          <p className="font-bold text-red-700">Clinic suspended</p>
+          <p className="mt-0.5 text-sm text-brand-muted">
+            Your clinic is currently hidden from patients. Contact support for details.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl border border-brand-teal-100 bg-linear-to-r from-brand-teal-100 to-brand-cream px-5 py-4 sm:flex-row sm:items-center">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 font-bold text-white">
+        ✓
+      </span>
+      <div>
+        <p className="font-bold text-brand-teal-900">Verified clinic</p>
+        <p className="mt-0.5 text-sm text-brand-muted">
+          Status is set by MediBridge admin review and cannot be edited here.
+        </p>
+      </div>
+      <span className="self-start rounded-md border border-brand-line bg-white px-2.5 py-1 text-[10px] font-bold text-brand-muted sm:ml-auto sm:self-center">
+        READ-ONLY
+      </span>
+    </div>
+  );
+}
+
+function MultiSelectPills<T extends string>({
   options,
   selected,
   onToggle,
+  formatLabel,
   label,
 }: {
-  options: string[];
-  selected: string[];
-  onToggle: (item: string) => void;
+  options: T[];
+  selected: T[];
+  onToggle: (item: T) => void;
+  formatLabel: (item: T) => string;
   label: string;
 }) {
   return (
@@ -505,7 +562,7 @@ function MultiSelectPills({
             }`}
           >
             {active && <span className="mr-1">✓</span>}
-            {item}
+            {formatLabel(item)}
           </button>
         );
       })}

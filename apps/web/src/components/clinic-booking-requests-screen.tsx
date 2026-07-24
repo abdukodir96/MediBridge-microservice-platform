@@ -8,6 +8,7 @@ import {
   DashboardSidebar,
 } from "@/components/dashboard-screen";
 import { useProfileImage } from "@/components/use-profile-image";
+import { useClinic } from "@/context/clinic-context";
 import {
   CANCEL_BOOKING,
   COMPLETE_BOOKING,
@@ -96,6 +97,7 @@ function scheduleText(booking: ClinicBooking) {
 
 export function ClinicBookingRequestsScreen() {
   const profileImage = useProfileImage();
+  const { clinic } = useClinic();
   const [activeFilter, setActiveFilter] = useState<BookingFilter>("ALL");
 
   // Fetches everything once (not filtered server-side by the active tab) so
@@ -226,6 +228,7 @@ export function ClinicBookingRequestsScreen() {
           navigation={clinicNavigation}
           profileImage={profileImage}
           activeLabel="Booking requests"
+          identityName={clinic.clinicName}
         />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">

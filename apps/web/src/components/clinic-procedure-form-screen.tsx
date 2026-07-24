@@ -34,7 +34,7 @@ export function ClinicProcedureFormScreen({
   procedureId?: string;
 }) {
   const profileImage = useProfileImage();
-  const { clinicId } = useClinic();
+  const { clinic, clinicId } = useClinic();
   const { data, loading, error } = useQuery(GET_PROCEDURE, {
     variables: { procedureId: procedureId ?? "" },
     skip: mode === "add",
@@ -50,6 +50,7 @@ export function ClinicProcedureFormScreen({
           navigation={clinicNavigation}
           profileImage={profileImage}
           activeLabel="Procedures"
+          identityName={clinic.clinicName}
         />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">

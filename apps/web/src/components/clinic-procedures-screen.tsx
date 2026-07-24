@@ -8,6 +8,7 @@ import {
   DashboardSidebar,
 } from "@/components/dashboard-screen";
 import { useProfileImage } from "@/components/use-profile-image";
+import { useClinic } from "@/context/clinic-context";
 import {
   DELETE_PROCEDURE,
   GET_MY_PROCEDURES,
@@ -23,6 +24,7 @@ const thumbnailTones = [
 
 export function ClinicProceduresScreen() {
   const profileImage = useProfileImage();
+  const { clinic } = useClinic();
   // cache-and-network (not the default cache-first): this list page fully
   // remounts on every client-side navigation back to it (it's a leaf route,
   // not part of the persistent clinic-dashboard layout), so without this a
@@ -83,6 +85,7 @@ export function ClinicProceduresScreen() {
             navigation={clinicNavigation}
             profileImage={profileImage}
             activeLabel="Procedures"
+            identityName={clinic.clinicName}
           />
           <section className="flex min-w-0 flex-col items-center justify-center gap-2 px-5 py-7 text-center sm:px-8 lg:px-10 lg:py-9">
             <p className="font-serif text-2xl font-semibold text-brand-teal-900">
@@ -105,6 +108,7 @@ export function ClinicProceduresScreen() {
           navigation={clinicNavigation}
           profileImage={profileImage}
           activeLabel="Procedures"
+          identityName={clinic.clinicName}
         />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
