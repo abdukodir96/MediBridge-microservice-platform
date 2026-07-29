@@ -2,73 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import type { Socket } from "socket.io-client";
 import { useProfileImage } from "@/components/use-profile-image";
-
-type ChatMessage = {
-  id: number;
-  text: string;
-  direction: "incoming" | "outgoing";
-  time: string;
-  read?: boolean;
-};
-
-type Conversation = {
-  id: number;
-  clinic: string;
-  shortId: string;
-  procedure: string;
-  online: boolean;
-  unread: number;
-  lastActive: string;
-  messages: ChatMessage[];
-};
-
-const initialConversations: Conversation[] = [
-  {
-    id: 1,
-    clinic: "Seoul Line Clinic",
-    shortId: "#a3f...c17",
-    procedure: "Rhinoplasty",
-    online: true,
-    unread: 1,
-    lastActive: "2m",
-    messages: [
-      {
-        id: 1,
-        direction: "outgoing",
-        text: "Hi! I just submitted a request for rhinoplasty. Could you let me know if Aug 12 works?",
-        time: "10:24",
-        read: true,
-      },
-      {
-        id: 2,
-        direction: "incoming",
-        text: "We’ve received your booking request — our coordinator will review it and confirm within 24 hours.",
-        time: "10:31",
-      },
-    ],
-  },
-  {
-    id: 2,
-    clinic: "Apgujeong Derma Center",
-    shortId: "#7e2...f90",
-    procedure: "Skin treatment",
-    online: false,
-    unread: 0,
-    lastActive: "1d",
-    messages: [
-      {
-        id: 1,
-        direction: "incoming",
-        text: "Thank you for your interest. Please tell us which skin concerns you would like to discuss.",
-        time: "Yesterday",
-      },
-    ],
-  },
-];
-
-const CHAT_STORAGE_KEY = "medibridge:patient-chat-history";
+import {
+  connectChatSocket,
+  disconnectChatSocket,
+  getMyMemberId,
+} from "@/lib/chat/socket";
+import type { ChatMessage, ChatRoom } from "@/lib/chat/types";
 
 const patientNavigation = [
   { icon: "👤", label: "My Page", href: "/dashboard/patient" },
@@ -76,124 +18,104 @@ const patientNavigation = [
   { icon: "💬", label: "Messages", href: "/dashboard/messages" },
 ];
 
+function shortId(id: string) {
+  return `#${id.slice(-6)}`;
+}
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export function PatientMessagesScreen() {
   const profileImage = useProfileImage();
-  const [conversations, setConversations] = useState(initialConversations);
-  const [activeId, setActiveId] = useState(initialConversations[0].id);
+  const socketRef = useRef<Socket | null>(null);
+  // Stale-closure guard: the socket.on('newMessage', ...) listener is
+  // registered once inside the connect effect, so a plain activeRoomId read
+  // there would always see its mount-time value (null). The ref is mutated
+  // on every room switch and read from inside the listener instead, so it
+  // always reflects the current room regardless of when the listener closed
+  // over it.
+  const activeRoomIdRef = useRef<string | null>(null);
+
+  // Lazy initializer (not an effect setState) — guarded so it never touches
+  // localStorage during the server render pass of this "use client" component.
+  const [myId] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : getMyMemberId(),
+  );
+  const [connected, setConnected] = useState(false);
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
-  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
-    const hydrationTimer = window.setTimeout(() => {
-      try {
-        const savedValue = localStorage.getItem(CHAT_STORAGE_KEY);
-        if (!savedValue) return;
+    const socket = connectChatSocket();
+    socketRef.current = socket;
 
-        const savedChat = JSON.parse(savedValue) as {
-          conversations?: Conversation[];
-          activeId?: number;
-        };
+    socket.on("connect", () => {
+      setConnected(true);
+      socket.emit(
+        "getMyRooms",
+        {},
+        (res: { status: string; rooms?: ChatRoom[]; message?: string }) => {
+          if (res.status === "ok" && res.rooms) setRooms(res.rooms);
+          else setError(res.message ?? "Failed to load conversations");
+        },
+      );
+    });
 
-        if (
-          !Array.isArray(savedChat.conversations) ||
-          savedChat.conversations.length === 0
-        ) {
-          return;
-        }
+    socket.on("disconnect", () => setConnected(false));
 
-        setConversations(savedChat.conversations);
-        if (
-          typeof savedChat.activeId === "number" &&
-          savedChat.conversations.some(
-            (conversation) => conversation.id === savedChat.activeId,
-          )
-        ) {
-          setActiveId(savedChat.activeId);
-        }
-      } catch {
-        localStorage.removeItem(CHAT_STORAGE_KEY);
-      } finally {
-        setStorageReady(true);
-      }
-    }, 0);
+    socket.on("newMessage", (message: ChatMessage) => {
+      if (message.messageRoomId !== activeRoomIdRef.current) return;
+      setMessages((current) => [...current, message]);
+    });
 
-    return () => window.clearTimeout(hydrationTimer);
+    return () => disconnectChatSocket();
   }, []);
 
-
   useEffect(() => {
-    if (!storageReady) return;
+    const list = messageListRef.current;
+    if (!list) return;
+    list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+  }, [messages]);
 
-    localStorage.setItem(
-      CHAT_STORAGE_KEY,
-      JSON.stringify({ conversations, activeId }),
-    );
-  }, [activeId, conversations, storageReady]);
-
-
-  const activeConversation = useMemo(
-    () =>
-      conversations.find((conversation) => conversation.id === activeId) ??
-      conversations[0],
-    [activeId, conversations],
-  );
-  const activeMessageCount = activeConversation?.messages.length ?? 0;
-
-  useEffect(() => {
-    const messageList = messageListRef.current;
-    if (!messageList) return;
-
-    messageList.scrollTo({
-      top: messageList.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [activeId, activeMessageCount]);
-
-  const selectConversation = (id: number) => {
-    setActiveId(id);
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === id
-          ? { ...conversation, unread: 0 }
-          : conversation,
-      ),
+  const handleSelectRoom = (roomId: string) => {
+    setActiveRoomId(roomId);
+    activeRoomIdRef.current = roomId;
+    setMessages([]);
+    setError(null);
+    socketRef.current?.emit(
+      "joinRoom",
+      { roomId },
+      (res: { status: string; messages?: ChatMessage[]; message?: string }) => {
+        if (res.status === "roomJoined" && res.messages) setMessages(res.messages);
+        else setError(res.message ?? "Failed to open conversation");
+      },
     );
   };
 
-  const sendMessage = (event: FormEvent<HTMLFormElement>) => {
+  const handleSend = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const text = draft.trim();
-    if (!text || !activeConversation) return;
-
-    const time = new Intl.DateTimeFormat("en", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(new Date());
-
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === activeConversation.id
-          ? {
-              ...conversation,
-              lastActive: "now",
-              messages: [
-                ...conversation.messages,
-                {
-                  id: Date.now(),
-                  direction: "outgoing",
-                  text,
-                  time,
-                  read: false,
-                },
-              ],
-            }
-          : conversation,
-      ),
-    );
+    if (!text || !activeRoomId) return;
     setDraft("");
+
+    socketRef.current?.emit(
+      "sendMessage",
+      { roomId: activeRoomId, text },
+      (res: { status: string; message?: string }) => {
+        // No optimistic append here — on success the server broadcasts the
+        // saved message back over 'newMessage' to everyone in the room,
+        // including the sender. Appending it here too would double it up.
+        if (res.status !== "sent") setError(res.message ?? "Failed to send");
+      },
+    );
   };
+
+  const activeRoom = rooms.find((room) => room._id === activeRoomId);
 
   return (
     <main className="flex-1 bg-white py-4 lg:py-5">
@@ -207,88 +129,63 @@ export function PatientMessagesScreen() {
                 Messages
               </h1>
               <p className="mt-1 text-sm text-brand-muted">
-                {conversations.length} conversations
+                {rooms.length} conversations {connected ? "" : "· connecting..."}
               </p>
             </div>
 
             <div className="max-h-[260px] overflow-y-auto overscroll-contain [scrollbar-gutter:stable] md:min-h-0 md:max-h-none md:flex-1">
-              {conversations.map((conversation) => {
-                const latestMessage =
-                  conversation.messages[conversation.messages.length - 1];
-                const isActive = conversation.id === activeConversation?.id;
-
+              {rooms.map((room) => {
+                const isActive = room._id === activeRoomId;
                 return (
                   <button
-                    key={conversation.id}
+                    key={room._id}
                     type="button"
-                    onClick={() => selectConversation(conversation.id)}
+                    onClick={() => handleSelectRoom(room._id)}
                     className={`flex w-full gap-3 border-b border-brand-line px-5 py-4 text-left transition hover:bg-brand-cream/70 ${
                       isActive ? "bg-brand-cream" : "bg-white"
                     }`}
                   >
-                    <span className="relative h-12 w-12 shrink-0 rounded-xl bg-linear-to-br from-brand-teal-500 to-brand-teal-900">
-                      {conversation.online && (
-                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-                      )}
-                    </span>
+                    <span className="h-12 w-12 shrink-0 rounded-xl bg-linear-to-br from-brand-teal-500 to-brand-teal-900" />
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-bold text-brand-ink">
-                          {conversation.clinic}{" "}
-                          <span className="text-[10px] font-medium text-brand-muted">
-                            {conversation.shortId}
-                          </span>
-                        </span>
-                        <span className="shrink-0 text-[11px] text-brand-muted">
-                          {conversation.lastActive}
-                        </span>
+                      <span className="truncate text-sm font-bold text-brand-ink">
+                        Clinic {shortId(room.roomClinicOwnerId)}
                       </span>
-                      <span className="mt-1 flex items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate text-xs text-brand-muted">
-                          {latestMessage?.text}
+                      {room.roomBookingId && (
+                        <span className="mt-1 block text-xs text-brand-muted">
+                          Linked to a booking
                         </span>
-                        {conversation.unread > 0 && (
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-teal-700 px-1 text-[10px] font-bold text-white">
-                            {conversation.unread}
-                          </span>
-                        )}
-                      </span>
+                      )}
                     </span>
                   </button>
                 );
               })}
+
+              {rooms.length === 0 && connected && (
+                <div className="px-5 py-10 text-center text-sm text-brand-muted">
+                  No conversations yet.
+                </div>
+              )}
             </div>
           </aside>
 
-          {activeConversation ? (
+          {!activeRoom ? (
+            <div className="flex min-h-[560px] flex-col items-center justify-center gap-2 text-brand-muted">
+              <span className="text-4xl opacity-50">💬</span>
+              <p className="text-sm font-semibold">Select a conversation</p>
+            </div>
+          ) : (
             <section className="flex h-[600px] min-h-0 min-w-0 flex-col bg-white md:h-full">
               <header className="flex min-h-[76px] items-center gap-3 border-b border-brand-line px-5 py-3">
-                <span className="relative h-11 w-11 shrink-0 rounded-xl bg-linear-to-br from-brand-teal-500 to-brand-teal-900">
-                  {activeConversation.online && (
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-                  )}
-                </span>
+                <span className="h-11 w-11 shrink-0 rounded-xl bg-linear-to-br from-brand-teal-500 to-brand-teal-900" />
                 <div className="min-w-0">
                   <h2 className="truncate text-sm font-bold text-brand-ink">
-                    {activeConversation.clinic}
+                    Clinic {shortId(activeRoom.roomClinicOwnerId)}
                   </h2>
-                  <p
-                    className={`mt-0.5 text-xs font-semibold ${
-                      activeConversation.online
-                        ? "text-emerald-600"
-                        : "text-brand-muted"
-                    }`}
-                  >
-                    ● {activeConversation.online ? "Online" : "Offline"}
-                  </p>
                 </div>
-                <span className="ml-auto hidden rounded-full bg-brand-teal-100 px-3 py-1.5 text-xs font-semibold text-brand-teal-700 sm:inline-flex">
-                  📋 Booking: {activeConversation.procedure}
-                </span>
               </header>
 
               <div className="border-b border-brand-line bg-[#f0ece2] px-4 py-2 text-center text-xs font-medium text-brand-muted">
-                🌐 Auto-translation isn’t available yet — messages appear exactly as typed
+                🌐 Auto-translation isn&apos;t available yet — messages appear exactly as typed
               </div>
 
               <div
@@ -296,40 +193,51 @@ export function PatientMessagesScreen() {
                 className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain bg-brand-cream px-5 py-5 [scrollbar-gutter:stable]"
                 aria-live="polite"
               >
-                <p className="my-1 text-center text-xs text-brand-muted">Today</p>
-                {activeConversation.messages.map((message, messageIndex) => (
-                  <div
-                    key={message.id}
-                    className={`flex max-w-[82%] flex-col gap-1 sm:max-w-[68%] ${
-                      message.direction === "outgoing"
-                        ? "self-end items-end"
-                        : "self-start items-start"
-                    }`}
-                  >
-                    <p
-                      className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
-                        message.direction === "outgoing"
-                          ? "rounded-br-sm bg-brand-teal-700 text-white"
-                          : "rounded-bl-sm border border-brand-line bg-white text-brand-ink"
+                {messages.map((message) => {
+                  const isMine = message.messageSenderId === myId;
+                  return (
+                    <div
+                      key={message._id}
+                      className={`flex max-w-[82%] flex-col gap-1 sm:max-w-[68%] ${
+                        isMine ? "self-end items-end" : "self-start items-start"
                       }`}
                     >
-                      {message.text}
-                    </p>
-                    <span className="flex items-center gap-1 px-1 text-[11px] text-brand-muted">
-                      {message.time}
-                      {message.direction === "outgoing" && (
-                        <MessageReadReceipt
-                          messages={activeConversation.messages}
-                          messageIndex={messageIndex}
-                        />
-                      )}
-                    </span>
-                  </div>
-                ))}
+                      <p
+                        className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
+                          isMine
+                            ? "rounded-br-sm bg-brand-teal-700 text-white"
+                            : "rounded-bl-sm border border-brand-line bg-white text-brand-ink"
+                        }`}
+                      >
+                        {message.messageText}
+                      </p>
+                      <span className="flex items-center gap-1 px-1 text-[11px] text-brand-muted">
+                        {formatTime(message.createdAt)}
+                        {isMine && (
+                          <span
+                            aria-label={message.messageRead ? "Read" : "Sent"}
+                            className={`inline-flex items-center font-bold leading-none ${
+                              message.messageRead ? "text-sky-500" : "text-brand-muted"
+                            }`}
+                          >
+                            <span>✓</span>
+                            {message.messageRead && <span className="-ml-1">✓</span>}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                {messages.length === 0 && (
+                  <p className="my-auto text-center text-sm text-brand-muted">
+                    No messages yet — say hello.
+                  </p>
+                )}
               </div>
 
               <form
-                onSubmit={sendMessage}
+                onSubmit={handleSend}
                 className="flex items-center gap-3 border-t border-brand-line bg-white px-4 py-3 sm:px-5"
               >
                 <label className="sr-only" htmlFor="patient-message">
@@ -353,45 +261,18 @@ export function PatientMessagesScreen() {
                 </button>
               </form>
             </section>
-          ) : (
-            <div className="flex min-h-[560px] flex-col items-center justify-center gap-2 text-brand-muted">
-              <span className="text-4xl opacity-50">💬</span>
-              <p className="text-sm font-semibold">Select a conversation</p>
-            </div>
           )}
         </div>
       </div>
+
+      {error && (
+        <p className="mx-6 mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+          {error}
+        </p>
+      )}
     </main>
   );
 }
-
-function MessageReadReceipt({
-  messages,
-  messageIndex,
-}: {
-  messages: ChatMessage[];
-  messageIndex: number;
-}) {
-  const isRead =
-    messages[messageIndex]?.read === true ||
-    messages
-      .slice(messageIndex + 1)
-      .some((message) => message.direction === "incoming");
-
-  return (
-    <span
-      aria-label={isRead ? "Read" : "Sent"}
-      className={
-        "inline-flex items-center text-[13px] font-bold leading-none " +
-        (isRead ? "text-sky-500" : "text-brand-muted")
-      }
-    >
-      <span>✓</span>
-      {isRead && <span className="-ml-1">✓</span>}
-    </span>
-  );
-}
-
 
 function PatientMessagesSidebar({ profileImage }: { profileImage: string }) {
   return (
