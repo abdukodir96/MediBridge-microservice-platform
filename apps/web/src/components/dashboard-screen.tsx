@@ -10,6 +10,7 @@ import { useProfileImage } from "@/components/use-profile-image";
 import { useClinicProfile } from "@/components/clinic-profile-store";
 import { GET_MY_BOOKINGS, type BookingStatus } from "@/lib/graphql/bookings";
 import { CONFIRM_COMPLETION } from "@/lib/graphql/payment";
+import { CREATE_REVIEW } from "@/lib/graphql/reviews";
 
 export type DashboardRole = "patient" | "clinic";
 
@@ -259,8 +260,52 @@ function PatientBookings() {
     variables: { input: { limit: 50 } },
   });
   const [confirmCompletion, { loading: confirming }] = useMutation(CONFIRM_COMPLETION);
+  const [createReview, { loading: submittingReview }] = useMutation(CREATE_REVIEW);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  // Session-local: bookings we know are "done" reviewing (submitted just now,
+  // or the backend told us on attempt that one already exists) — there's no
+  // getMyReviews query to check this ahead of time, so we only learn it by
+  // trying, per the deliberate UX trade-off (soft message, not a red error).
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
 
   const bookings = data?.getMyBookings.list ?? [];
+
+  const handleSubmitReview = async (bookingId: string, rating: number, text: string) => {
+    try {
+      await createReview({
+        variables: {
+          input: { reviewBookingId: bookingId, reviewRating: rating, reviewText: text || undefined },
+        },
+      });
+      setReviewedIds((current) => new Set(current).add(bookingId));
+      setReviewingId(null);
+      await Swal.fire({
+        icon: "success",
+        title: "Thanks for your review!",
+        confirmButtonColor: "#125453",
+        timer: 1600,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes("already been reviewed")) {
+        setReviewedIds((current) => new Set(current).add(bookingId));
+        setReviewingId(null);
+        await Swal.fire({
+          icon: "info",
+          title: "You've already reviewed this booking",
+          confirmButtonColor: "#125453",
+        });
+        return;
+      }
+      await Swal.fire({
+        icon: "error",
+        title: "Couldn't submit review",
+        text: message,
+        confirmButtonColor: "#125453",
+      });
+    }
+  };
 
   const handleConfirmCompletion = async (bookingId: string) => {
     const result = await Swal.fire({
@@ -317,53 +362,136 @@ function PatientBookings() {
           {bookings.map((booking) => (
             <article
               key={booking._id}
-              className="flex flex-col gap-4 rounded-xl border border-brand-line p-4 transition hover:border-brand-teal-500 hover:shadow-md sm:flex-row sm:items-center"
+              className="flex flex-col gap-4 rounded-xl border border-brand-line p-4 transition hover:border-brand-teal-500 hover:shadow-md"
             >
-              <div className="flex min-w-0 flex-1 items-center gap-4">
-                <span className="h-14 w-14 shrink-0 rounded-xl bg-linear-to-br from-brand-teal-500 to-brand-teal-900" />
-                <div className="min-w-0">
-                  <p className="font-bold text-brand-ink">{booking.clinic.clinicName}</p>
-                  <p className="mt-1 truncate text-sm text-brand-muted">
-                    {booking.procedure.procedureName} ·{" "}
-                    {booking.bookingStatus === "REQUESTED"
-                      ? `prefers ${formatBookingDate(booking.bookingPreferredDate)}`
-                      : formatBookingDate(booking.bookingConfirmedDate ?? booking.bookingPreferredDate)}
-                  </p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <span className="h-14 w-14 shrink-0 rounded-xl bg-linear-to-br from-brand-teal-500 to-brand-teal-900" />
+                  <div className="min-w-0">
+                    <p className="font-bold text-brand-ink">{booking.clinic.clinicName}</p>
+                    <p className="mt-1 truncate text-sm text-brand-muted">
+                      {booking.procedure.procedureName} ·{" "}
+                      {booking.bookingStatus === "REQUESTED"
+                        ? `prefers ${formatBookingDate(booking.bookingPreferredDate)}`
+                        : formatBookingDate(booking.bookingConfirmedDate ?? booking.bookingPreferredDate)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold uppercase ${statusTones[booking.bookingStatus]}`}
+                  >
+                    {statusLabels[booking.bookingStatus]}
+                  </span>
+                  {booking.bookingAmount != null && (
+                    <p className="mt-2 font-bold text-brand-teal-900">{money.format(booking.bookingAmount)}</p>
+                  )}
+                  {booking.bookingStatus === "CONFIRMED" && (
+                    <Link
+                      href={`/dashboard/patient/bookings/${booking._id}/pay`}
+                      className="mt-2 inline-flex min-h-9 items-center rounded-lg bg-brand-teal-700 px-4 text-xs font-bold text-white transition hover:bg-brand-teal-900"
+                    >
+                      Pay now →
+                    </Link>
+                  )}
+                  {booking.bookingStatus === "COMPLETED" && (
+                    <div className="mt-2 flex flex-wrap justify-end gap-2">
+                      <button
+                        type="button"
+                        disabled={confirming}
+                        onClick={() => handleConfirmCompletion(booking._id)}
+                        className="inline-flex min-h-9 cursor-pointer items-center rounded-lg bg-brand-gold px-4 text-xs font-bold text-brand-teal-900 transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        ✓ Confirm & release payment
+                      </button>
+                      {!reviewedIds.has(booking._id) && (
+                        <button
+                          type="button"
+                          onClick={() => setReviewingId((current) => (current === booking._id ? null : booking._id))}
+                          className="inline-flex min-h-9 cursor-pointer items-center rounded-lg border border-brand-line px-4 text-xs font-bold text-brand-teal-900 transition hover:border-brand-teal-500 hover:bg-brand-cream"
+                        >
+                          ★ Leave a review
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
-                <span
-                  className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold uppercase ${statusTones[booking.bookingStatus]}`}
-                >
-                  {statusLabels[booking.bookingStatus]}
-                </span>
-                {booking.bookingAmount != null && (
-                  <p className="mt-2 font-bold text-brand-teal-900">{money.format(booking.bookingAmount)}</p>
-                )}
-                {booking.bookingStatus === "CONFIRMED" && (
-                  <Link
-                    href={`/dashboard/patient/bookings/${booking._id}/pay`}
-                    className="mt-2 inline-flex min-h-9 items-center rounded-lg bg-brand-teal-700 px-4 text-xs font-bold text-white transition hover:bg-brand-teal-900"
-                  >
-                    Pay now →
-                  </Link>
-                )}
-                {booking.bookingStatus === "COMPLETED" && (
-                  <button
-                    type="button"
-                    disabled={confirming}
-                    onClick={() => handleConfirmCompletion(booking._id)}
-                    className="mt-2 inline-flex min-h-9 cursor-pointer items-center rounded-lg bg-brand-gold px-4 text-xs font-bold text-brand-teal-900 transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    ✓ Confirm & release payment
-                  </button>
-                )}
-              </div>
+
+              {reviewingId === booking._id && (
+                <ReviewForm
+                  submitting={submittingReview}
+                  onCancel={() => setReviewingId(null)}
+                  onSubmit={(rating, text) => handleSubmitReview(booking._id, rating, text)}
+                />
+              )}
             </article>
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+function ReviewForm({
+  submitting,
+  onCancel,
+  onSubmit,
+}: {
+  submitting: boolean;
+  onCancel: () => void;
+  onSubmit: (rating: number, text: string) => void;
+}) {
+  const [rating, setRating] = useState(5);
+  const [text, setText] = useState("");
+
+  return (
+    <div className="rounded-xl border border-brand-line bg-brand-cream/40 p-4">
+      <p className="mb-2 text-sm font-semibold text-brand-muted">Your rating</p>
+      <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+        {Array.from({ length: 5 }, (_, index) => {
+          const value = index + 1;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={rating === value}
+              onClick={() => setRating(value)}
+              className={`cursor-pointer text-2xl leading-none ${value <= rating ? "text-brand-gold" : "text-brand-line"}`}
+            >
+              ★
+            </button>
+          );
+        })}
+      </div>
+
+      <textarea
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        placeholder="Share your experience (optional)"
+        rows={3}
+        className="mt-3 w-full rounded-xl border border-brand-line bg-white px-4 py-3 text-sm text-brand-ink outline-none transition placeholder:text-brand-muted/65 focus:border-brand-teal-500 focus:ring-2 focus:ring-brand-teal-100"
+      />
+
+      <div className="mt-3 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="min-h-9 cursor-pointer rounded-lg border border-brand-line px-4 text-xs font-semibold text-brand-muted transition hover:bg-white"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => onSubmit(rating, text.trim())}
+          className="min-h-9 cursor-pointer rounded-lg bg-brand-teal-700 px-4 text-xs font-bold text-white transition hover:bg-brand-teal-900 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting ? "Submitting..." : "Submit review"}
+        </button>
+      </div>
+    </div>
   );
 }
 

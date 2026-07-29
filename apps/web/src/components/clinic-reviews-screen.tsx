@@ -6,105 +6,67 @@ import {
 } from "@/components/dashboard-screen";
 import { Pagination } from "@/components/pagination";
 import { useProfileImage } from "@/components/use-profile-image";
-
-type Review = {
-  id: number;
-  patient: string;
-  country: string;
-  date: string;
-  rating: number;
-  text: string;
-  procedure: string;
-  avatarTone: string;
-};
-
-const ratingDistribution = [
-  { stars: 5, count: 274, percentage: 88 },
-  { stars: 4, count: 25, percentage: 8 },
-  { stars: 3, count: 9, percentage: 3 },
-  { stars: 2, count: 3, percentage: 1 },
-  { stars: 1, count: 1, percentage: 0.3 },
-];
-
-const reviewTemplates = [
-  {
-    patient: "Wang L.",
-    country: "🇨🇳",
-    rating: 5,
-    text: "The coordinator spoke perfect Chinese and translated everything during my consultation. The escrow payment made me feel safe sending money before arriving. Very happy with my rhinoplasty result.",
-    procedure: "Rhinoplasty",
-    avatarTone: "from-brand-gold to-amber-700",
-  },
-  {
-    patient: "Yuki T.",
-    country: "🇯🇵",
-    rating: 5,
-    text: "Booking through MediBridge was much easier than contacting the clinic directly. Everything was clear and I could chat with the clinic before deciding.",
-    procedure: "Double Eyelid Surgery",
-    avatarTone: "from-brand-teal-500 to-brand-teal-900",
-  },
-  {
-    patient: "Linh N.",
-    country: "🇻🇳",
-    rating: 4,
-    text: "Good result overall. Recovery took a little longer than expected, but the clinic followed up regularly and answered every question.",
-    procedure: "V-line Face Contouring",
-    avatarTone: "from-amber-700 to-brand-gold",
-  },
-  {
-    patient: "Emma R.",
-    country: "🇺🇸",
-    rating: 5,
-    text: "The clinic explained the treatment plan and pricing clearly. The English-speaking coordinator made the entire visit feel organized and comfortable.",
-    procedure: "Skin Treatment",
-    avatarTone: "from-brand-teal-700 to-brand-teal-900",
-  },
-  {
-    patient: "Aziza K.",
-    country: "🇺🇿",
-    rating: 5,
-    text: "I received quick answers before travelling and the clinic arranged every appointment on time. The aftercare instructions were especially helpful.",
-    procedure: "Rhinoplasty",
-    avatarTone: "from-brand-gold to-brand-teal-700",
-  },
-  {
-    patient: "Minh P.",
-    country: "🇻🇳",
-    rating: 4,
-    text: "Professional team and a clean clinic. I appreciated the regular recovery check-ins after returning home.",
-    procedure: "Double Eyelid Surgery",
-    avatarTone: "from-brand-teal-500 to-cyan-800",
-  },
-];
-
-const dates = [
-  "2 days ago",
-  "1 week ago",
-  "3 weeks ago",
-  "1 month ago",
-  "2 months ago",
-  "3 months ago",
-];
-
-const reviews: Review[] = Array.from({ length: 18 }, (_, index) => {
-  const template = reviewTemplates[index % reviewTemplates.length];
-  return {
-    ...template,
-    id: index + 1,
-    date: dates[index % dates.length],
-  };
-});
+import { useClinic } from "@/context/clinic-context";
+import { useQuery } from "@apollo/client/react";
+import {
+  GET_REVIEWS_BY_CLINIC,
+  type ClinicReview,
+  type MemberCountry,
+} from "@/lib/graphql/reviews";
 
 const REVIEWS_PER_PAGE = 3;
 
+const countryFlags: Record<MemberCountry, string> = {
+  CHINA: "🇨🇳",
+  JAPAN: "🇯🇵",
+  USA: "🇺🇸",
+  VIETNAM: "🇻🇳",
+  THAILAND: "🇹🇭",
+  OTHER: "",
+};
+
+const avatarTones = [
+  "from-brand-gold to-amber-700",
+  "from-brand-teal-500 to-brand-teal-900",
+  "from-amber-700 to-brand-gold",
+  "from-brand-teal-700 to-brand-teal-900",
+  "from-brand-gold to-brand-teal-700",
+  "from-brand-teal-500 to-cyan-800",
+];
+
+function toneFor(id: string) {
+  const hash = id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return avatarTones[hash % avatarTones.length];
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export function ClinicReviewsScreen({ requestedPage }: { requestedPage: number }) {
   const profileImage = useProfileImage();
-  const totalPages = Math.max(1, Math.ceil(reviews.length / REVIEWS_PER_PAGE));
+  const { clinic } = useClinic();
+
+  const { data, loading, error } = useQuery(GET_REVIEWS_BY_CLINIC, {
+    variables: { clinicId: clinic._id, input: { page: requestedPage, limit: REVIEWS_PER_PAGE } },
+  });
+
+  // getReviewsByClinic filters to VERIFIED clinics (same visibility rule as
+  // getClinic/getProceduresByClinic), so a not-yet-verified clinic's own
+  // Reviews page would otherwise show a raw "Clinic not found" error — but a
+  // PENDING clinic structurally can't have reviews yet (no patient can find
+  // or book it), so treat that specific case as "no reviews" instead of an
+  // error, rather than adding an owner-scoped getMyReviews query for it.
+  const isNotYetVerified = Boolean(error) && clinic.clinicStatus !== "VERIFIED";
+
+  const reviews = isNotYetVerified ? [] : data?.getReviewsByClinic.list ?? [];
+  const total = isNotYetVerified ? 0 : data?.getReviewsByClinic.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / REVIEWS_PER_PAGE));
   const currentPage = Math.min(Math.max(1, requestedPage), totalPages);
-  const pageReviews = reviews.slice(
-    (currentPage - 1) * REVIEWS_PER_PAGE,
-    currentPage * REVIEWS_PER_PAGE,
-  );
 
   return (
     <main className="flex-1 bg-white py-4 lg:py-5">
@@ -114,6 +76,7 @@ export function ClinicReviewsScreen({ requestedPage }: { requestedPage: number }
           navigation={clinicNavigation}
           profileImage={profileImage}
           activeLabel="Reviews"
+          identityName={clinic.clinicName}
         />
 
         <section className="min-w-0 px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -122,86 +85,95 @@ export function ClinicReviewsScreen({ requestedPage }: { requestedPage: number }
               Reviews
             </h1>
             <p className="mt-1.5 text-sm text-brand-muted sm:text-base">
-              What patients are saying about Seoul Line Clinic.
+              What patients are saying about {clinic.clinicName}.
             </p>
           </header>
 
           <section
             aria-label="Clinic rating summary"
-            className="mt-7 flex flex-col gap-6 rounded-2xl border border-brand-line bg-white p-5 sm:flex-row sm:items-center sm:gap-8 sm:p-7"
+            className="mt-7 flex items-center gap-6 rounded-2xl border border-brand-line bg-white p-5 sm:gap-8 sm:p-7"
           >
-            <div className="border-b border-brand-line pb-5 text-center sm:min-w-[165px] sm:border-b-0 sm:border-r sm:pb-0 sm:pr-8">
+            <div className="text-center">
               <strong className="block font-serif text-5xl font-semibold leading-none text-brand-teal-900">
-                4.9
+                {clinic.clinicRating.toFixed(1)}
               </strong>
-              <StarRating rating={5} />
-              <p className="mt-1 text-sm text-brand-muted">312 reviews</p>
-            </div>
-
-            <div className="flex-1 space-y-2.5">
-              {ratingDistribution.map((row) => (
-                <div
-                  key={row.stars}
-                  className="grid grid-cols-[42px_minmax(0,1fr)_38px] items-center gap-3 text-xs text-brand-muted"
-                >
-                  <span>{row.stars} ★</span>
-                  <span className="h-2 overflow-hidden rounded-full bg-brand-line">
-                    <span
-                      className="block h-full rounded-full bg-brand-gold"
-                      style={{ width: `${row.percentage}%` }}
-                    />
-                  </span>
-                  <span className="text-right">{row.count}</span>
-                </div>
-              ))}
+              <StarRating rating={Math.round(clinic.clinicRating)} />
+              <p className="mt-1 text-sm text-brand-muted">
+                {clinic.clinicReviewCount} {clinic.clinicReviewCount === 1 ? "review" : "reviews"}
+              </p>
             </div>
           </section>
 
-          <div className="mt-6 space-y-3">
-            {pageReviews.map((review) => (
-              <article
-                key={review.id}
-                className="min-h-[160px] rounded-2xl border border-brand-line bg-white p-4 transition duration-200 hover:border-brand-teal-500 hover:shadow-md sm:p-5"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${review.avatarTone} text-xs font-bold text-white`}
-                    >
-                      {review.patient
-                        .split(" ")
-                        .map((part) => part[0])
-                        .join("")}
-                    </span>
-                    <div>
-                      <h2 className="text-sm font-bold text-brand-ink">
-                        {review.patient} · {review.country}
-                      </h2>
-                      <p className="mt-0.5 text-xs text-brand-muted">{review.date}</p>
-                    </div>
+          {loading ? (
+            <div className="mt-8 flex min-h-[300px] items-center justify-center">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-line border-t-brand-teal-700" />
+            </div>
+          ) : error && !isNotYetVerified ? (
+            <div className="mt-8 flex min-h-[300px] flex-col items-center justify-center gap-2 text-center">
+              <p className="font-serif text-2xl font-semibold text-brand-teal-900">
+                Couldn&apos;t load reviews
+              </p>
+              <p className="max-w-md text-sm text-brand-muted">{error.message}</p>
+            </div>
+          ) : (
+            <>
+              <div className="mt-6 space-y-3">
+                {reviews.map((review) => (
+                  <ReviewCard key={review._id} review={review} />
+                ))}
+
+                {reviews.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-brand-line px-6 py-16 text-center">
+                    <p className="font-serif text-2xl font-semibold text-brand-teal-900">
+                      No reviews yet
+                    </p>
+                    <p className="mt-2 text-sm text-brand-muted">
+                      Reviews from patients will appear here after their treatment is complete.
+                    </p>
                   </div>
-                  <StarRating rating={review.rating} compact />
-                </div>
+                )}
+              </div>
 
-                <p className="mt-3 text-sm leading-6 text-brand-ink">
-                  {review.text}
-                </p>
-                <span className="mt-3 inline-flex rounded-full bg-brand-teal-100 px-3 py-1 text-xs font-semibold text-brand-teal-700">
-                  {review.procedure}
-                </span>
-              </article>
-            ))}
-          </div>
-
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            basePath="/dashboard/clinic/reviews"
-            ariaLabel="Reviews pagination"
-          />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                basePath="/dashboard/clinic/reviews"
+                ariaLabel="Reviews pagination"
+              />
+            </>
+          )}
         </section>
       </div>
     </main>
+  );
+}
+
+function ReviewCard({ review }: { review: ClinicReview }) {
+  const flag = review.patient.memberCountry ? countryFlags[review.patient.memberCountry] : "";
+
+  return (
+    <article className="min-h-[160px] rounded-2xl border border-brand-line bg-white p-4 transition duration-200 hover:border-brand-teal-500 hover:shadow-md sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${toneFor(review._id)} text-xs font-bold text-white`}
+          >
+            {review.patient.memberNick.slice(0, 2).toUpperCase()}
+          </span>
+          <div>
+            <h2 className="text-sm font-bold text-brand-ink">
+              {review.patient.memberNick} {flag}
+            </h2>
+            <p className="mt-0.5 text-xs text-brand-muted">{formatDate(review.createdAt)}</p>
+          </div>
+        </div>
+        <StarRating rating={review.reviewRating} compact />
+      </div>
+
+      {review.reviewText && (
+        <p className="mt-3 text-sm leading-6 text-brand-ink">{review.reviewText}</p>
+      )}
+    </article>
   );
 }
 
