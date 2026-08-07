@@ -5,6 +5,7 @@ import { ClinicService } from './clinic.service';
 import ClinicSchema from '../../libs/schema/clinic.model';
 import ProcedureSchema from '../../libs/schema/procedure.model';
 import { AuthModule } from '../auth/auth.module';
+import { MemberModule } from '../member/member.module';
 
 @Module({
 	imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from '../auth/auth.module';
 			{ name: 'Procedure', schema: ProcedureSchema },
 		]),
 		AuthModule, // RolesGuard depends on AuthService
+		MemberModule, // for the Clinic type's owner field resolver
 	],
 	providers: [ClinicResolver, ClinicService],
 	exports: [ClinicService],

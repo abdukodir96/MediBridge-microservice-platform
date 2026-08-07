@@ -6,9 +6,13 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId, isValidObjectId } from 'mongoose';
-import { Clinic, Clinics } from '../../libs/dto/clinic/clinic';
+import { Clinic, Clinics, ClinicStatusCounts } from '../../libs/dto/clinic/clinic';
 import { Procedure } from '../../libs/dto/procedure/procedure';
-import { ClinicInput, ClinicsInquiry } from '../../libs/dto/clinic/clinic.input';
+import {
+	ClinicInput,
+	ClinicsInquiry,
+	ClinicsAdminInquiry,
+} from '../../libs/dto/clinic/clinic.input';
 import { ClinicStatus, ClinicSort } from '../../libs/enums/clinic.enum';
 
 // Escapes regex special characters so user search input is matched literally,
@@ -170,6 +174,39 @@ export class ClinicService {
 		]);
 
 		return { list, total: countResult[0]?.total ?? 0 };
+	}
+
+	// ADMIN — the review queue / all-clinics table (no VERIFIED filter,
+	// optional status filter for the Pending/Verified/Suspended tabs)
+	public async getClinicsForAdmin(input: ClinicsAdminInquiry): Promise<Clinics> {
+		const { status, page = 1, limit = 20 } = input;
+
+		const match: Record<string, unknown> = {};
+		if (status) match.clinicStatus = status;
+
+		const skip = (page - 1) * limit;
+		const [list, total] = await Promise.all([
+			this.clinicModel
+				.find(match)
+				.sort({ createdAt: -1, _id: 1 })
+				.skip(skip)
+				.limit(limit)
+				.exec(),
+			this.clinicModel.countDocuments(match),
+		]);
+
+		return { list, total };
+	}
+
+	// ADMIN — dashboard tile counts
+	public async getClinicStatusCounts(): Promise<ClinicStatusCounts> {
+		const [pending, verified, suspended, total] = await Promise.all([
+			this.clinicModel.countDocuments({ clinicStatus: ClinicStatus.PENDING }),
+			this.clinicModel.countDocuments({ clinicStatus: ClinicStatus.VERIFIED }),
+			this.clinicModel.countDocuments({ clinicStatus: ClinicStatus.SUSPENDED }),
+			this.clinicModel.countDocuments({}),
+		]);
+		return { pending, verified, suspended, total };
 	}
 
 	// ADMIN — changes a clinic's status (approve / suspend)

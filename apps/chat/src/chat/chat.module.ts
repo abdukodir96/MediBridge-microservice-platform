@@ -8,19 +8,19 @@ import ChatRoomSchema from '../libs/schema/chat-room.model';
 import MessageSchema from '../libs/schema/message.model';
 
 @Module({
-	imports: [
-		MongooseModule.forFeature([
-			{ name: 'ChatRoom', schema: ChatRoomSchema },
-			{ name: 'Message', schema: MessageSchema },
-		]),
-		JwtModule.registerAsync({
-			imports: [ConfigModule],
-			inject: [ConfigService],
-			useFactory: (config: ConfigService) => ({
-				secret: config.get<string>('JWT_SECRET'),
-			}),
-		}),
-	],
-	providers: [ChatGateway, ChatService],
+  imports: [
+    MongooseModule.forFeature([
+      { name: 'ChatRoom', schema: ChatRoomSchema },
+      { name: 'Message', schema: MessageSchema },
+    ]),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('JWT_SECRET'),
+      }),
+    }),
+  ],
+  providers: [ChatGateway, ChatService],
 })
 export class ChatModule {}

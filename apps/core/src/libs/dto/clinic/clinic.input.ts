@@ -9,7 +9,7 @@ import {
 	Max,
 	IsEnum,
 } from 'class-validator';
-import { ClinicSpecialty, ClinicSort } from '../../enums/clinic.enum';
+import { ClinicSpecialty, ClinicSort, ClinicStatus } from '../../enums/clinic.enum';
 import { MemberLang } from '../../enums/member.enum';
 
 // Create a clinic
@@ -82,5 +82,27 @@ export class ClinicsInquiry {
 	@Min(1)
 	@Max(50)
 	@Field(() => Int, { nullable: true, defaultValue: 10 })
+	limit?: number;
+}
+
+// ADMIN — the review queue / all-clinics table (no VERIFIED filter, unlike
+// ClinicsInquiry, plus a status filter to drive the Pending/Verified/
+// Suspended tabs)
+@InputType()
+export class ClinicsAdminInquiry {
+	@IsOptional()
+	@IsEnum(ClinicStatus)
+	@Field(() => ClinicStatus, { nullable: true })
+	status?: ClinicStatus;
+
+	@IsOptional()
+	@Min(1)
+	@Field(() => Int, { nullable: true, defaultValue: 1 })
+	page?: number;
+
+	@IsOptional()
+	@Min(1)
+	@Max(50)
+	@Field(() => Int, { nullable: true, defaultValue: 20 })
 	limit?: number;
 }

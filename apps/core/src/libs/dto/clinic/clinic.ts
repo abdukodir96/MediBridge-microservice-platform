@@ -2,6 +2,7 @@ import { Field, ObjectType, Int, Float } from '@nestjs/graphql';
 import type { ObjectId } from 'mongoose';
 import { ClinicStatus, ClinicSpecialty } from '../../enums/clinic.enum';
 import { MemberLang } from '../../enums/member.enum';
+import { Member } from '../member/member';
 
 @ObjectType()
 export class Clinic {
@@ -52,6 +53,10 @@ export class Clinic {
 	// plain document and leaves this null since it doesn't join procedures.
 	@Field(() => Float, { nullable: true })
 	startingPrice?: number;
+
+	// Resolved by ClinicResolver's field resolver, not stored on the document
+	@Field(() => Member)
+	owner: Member;
 }
 
 // List + total count (for pagination)
@@ -59,6 +64,22 @@ export class Clinic {
 export class Clinics {
 	@Field(() => [Clinic])
 	list: Clinic[];
+
+	@Field(() => Int)
+	total: number;
+}
+
+// ADMIN — dashboard tile counts (Pending / Verified / Suspended / Total)
+@ObjectType()
+export class ClinicStatusCounts {
+	@Field(() => Int)
+	pending: number;
+
+	@Field(() => Int)
+	verified: number;
+
+	@Field(() => Int)
+	suspended: number;
 
 	@Field(() => Int)
 	total: number;

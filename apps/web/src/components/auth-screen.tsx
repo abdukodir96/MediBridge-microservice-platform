@@ -9,7 +9,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-type MemberType = "PATIENT" | "CLINIC";
+type SignupRole = "PATIENT" | "CLINIC";
+type MemberType = "PATIENT" | "CLINIC" | "ADMIN";
 type AuthMember = { _id: string; memberEmail: string; memberNick: string; memberType: MemberType; accessToken: string };
 
 const LOGIN: TypedDocumentNode<{ login: AuthMember }, { input: { memberEmail: string; memberPassword: string } }> = gql`
@@ -18,7 +19,7 @@ const LOGIN: TypedDocumentNode<{ login: AuthMember }, { input: { memberEmail: st
   }
 `;
 
-const SIGNUP: TypedDocumentNode<{ signup: AuthMember }, { input: { memberEmail: string; memberPassword: string; memberNick: string; memberPhone: string; memberType: MemberType; memberLang: "EN" } }> = gql`
+const SIGNUP: TypedDocumentNode<{ signup: AuthMember }, { input: { memberEmail: string; memberPassword: string; memberNick: string; memberPhone: string; memberType: SignupRole; memberLang: "EN" } }> = gql`
   mutation Signup($input: MemberInput!) {
     signup(input: $input) { _id memberEmail memberNick memberType accessToken }
   }
@@ -31,7 +32,7 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
   const [activeMode, setActiveMode] = useState(mode);
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSignup = activeMode === "signup";
-  const [role, setRole] = useState<MemberType | null>(null);
+  const [role, setRole] = useState<SignupRole | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -64,7 +65,9 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
     localStorage.setItem("memberEmail", member.memberEmail);
     localStorage.setItem("memberNick", member.memberNick);
     window.dispatchEvent(new Event("storage"));
-    router.push(member.memberType === "PATIENT" ? "/dashboard/patient" : "/dashboard/clinic");
+    if (member.memberType === "ADMIN") router.push("/admin");
+    else if (member.memberType === "CLINIC") router.push("/dashboard/clinic");
+    else router.push("/dashboard/patient");
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
