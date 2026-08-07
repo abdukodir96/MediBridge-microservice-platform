@@ -9,6 +9,7 @@ import {
   type AdminClinic,
 } from "@/lib/graphql/admin";
 import { langLabel, titleCaseEnum } from "@/lib/clinic-format";
+import { useMessageClinic } from "@/lib/chat/use-message-clinic";
 
 function timeAgo(value: string) {
   const diffMs = Date.now() - new Date(value).getTime();
@@ -28,6 +29,7 @@ export function AdminClinicReviewScreen() {
     variables: { input: { status: "PENDING", limit: 50 } },
   });
   const [updateClinicStatus, { loading: updating }] = useMutation(UPDATE_CLINIC_STATUS);
+  const { messageClinic, openingFor } = useMessageClinic();
 
   const counts = countsData?.getClinicStatusCounts;
   const pendingClinics = data?.getClinicsForAdmin.list ?? [];
@@ -187,6 +189,14 @@ export function AdminClinicReviewScreen() {
                     className="cursor-pointer rounded-lg border border-red-200 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Reject
+                  </button>
+                  <button
+                    type="button"
+                    disabled={openingFor === clinic.owner._id}
+                    onClick={() => messageClinic(clinic.owner._id)}
+                    className="cursor-pointer rounded-lg border border-brand-line px-4 py-2 text-xs font-semibold text-brand-muted transition hover:bg-brand-cream disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    💬 {openingFor === clinic.owner._id ? "Opening..." : "Message clinic"}
                   </button>
                 </div>
               </div>

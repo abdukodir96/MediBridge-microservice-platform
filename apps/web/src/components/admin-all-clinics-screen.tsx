@@ -11,6 +11,7 @@ import {
   type AdminClinic,
   type ClinicStatus,
 } from "@/lib/graphql/admin";
+import { useMessageClinic } from "@/lib/chat/use-message-clinic";
 
 type TabValue = "ALL" | ClinicStatus;
 
@@ -27,6 +28,7 @@ export function AdminAllClinicsScreen() {
     variables: { input: { status: tab === "ALL" ? undefined : tab, limit: 50 } },
   });
   const [updateClinicStatus, { loading: updating }] = useMutation(UPDATE_CLINIC_STATUS);
+  const { messageClinic, openingFor } = useMessageClinic();
 
   const counts = countsData?.getClinicStatusCounts;
   const clinics = data?.getClinicsForAdmin.list ?? [];
@@ -205,6 +207,14 @@ export function AdminAllClinicsScreen() {
                           Review
                         </Link>
                       )}
+                      <button
+                        type="button"
+                        disabled={openingFor === clinic.owner._id}
+                        onClick={() => messageClinic(clinic.owner._id)}
+                        className="cursor-pointer rounded-md border border-brand-line px-2.5 py-1.5 text-[11px] font-semibold text-brand-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        💬 {openingFor === clinic.owner._id ? "..." : "Message"}
+                      </button>
                     </div>
                   </td>
                 </tr>

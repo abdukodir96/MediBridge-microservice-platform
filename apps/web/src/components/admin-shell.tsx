@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 const adminNav = [
   { icon: "🏥", label: "Clinic Review", href: "/admin" },
   { icon: "📋", label: "All Clinics", href: "/admin/clinics" },
+  { icon: "💬", label: "Messages", href: "/admin/messages" },
   { icon: "👥", label: "Members", href: null },
   { icon: "📊", label: "Platform Stats", href: null },
 ];

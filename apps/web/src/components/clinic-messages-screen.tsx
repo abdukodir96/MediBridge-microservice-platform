@@ -32,7 +32,11 @@ export function ClinicMessagesScreen() {
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           <ChatPanel
             chat={chat}
-            counterpartLabel={(room) => `Patient ${shortId(chat.counterpartId(room))}`}
+            counterpartLabel={(room) =>
+              room.roomKind === "ADMIN_CLINIC"
+                ? "🛡 MediBridge Admin"
+                : `Patient ${shortId(chat.counterpartId(room) ?? "")}`
+            }
           />
         </div>
       </div>

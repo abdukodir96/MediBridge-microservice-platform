@@ -10,10 +10,14 @@ export interface ChatMessage {
 	updatedAt: string;
 }
 
+export type RoomKind = "PATIENT_CLINIC" | "ADMIN_CLINIC";
+
 export interface ChatRoom {
 	_id: string;
-	roomPatientId: string;
+	roomPatientId: string | null;
 	roomClinicOwnerId: string;
+	roomAdminId: string | null;
+	roomKind: RoomKind;
 	roomBookingId: string | null;
 	roomLastMessageAt: string | null;
 	createdAt: string;

@@ -15,7 +15,7 @@ export interface AdminClinic {
 	clinicRating: number;
 	clinicReviewCount: number;
 	createdAt: string;
-	owner: { memberEmail: string };
+	owner: { _id: string; memberEmail: string };
 }
 
 interface ClinicStatusCountsData {
@@ -61,6 +61,7 @@ export const GET_CLINICS_FOR_ADMIN: TypedDocumentNode<GetClinicsForAdminData, Ge
 				clinicReviewCount
 				createdAt
 				owner {
+					_id
 					memberEmail
 				}
 			}

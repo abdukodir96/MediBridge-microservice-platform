@@ -45,7 +45,7 @@ function PatientChat() {
   return (
     <ChatPanel
       chat={chat}
-      counterpartLabel={(room) => `Clinic ${shortId(chat.counterpartId(room))}`}
+      counterpartLabel={(room) => `Clinic ${shortId(chat.counterpartId(room) ?? "")}`}
     />
   );
 }
