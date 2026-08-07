@@ -3,14 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { useProfileImage } from "@/components/use-profile-image";
 import { useClinicProfile } from "@/components/clinic-profile-store";
-import { GET_MY_BOOKINGS, type BookingStatus } from "@/lib/graphql/bookings";
+import { GET_MY_BOOKINGS, type BookingStatus, type MyBooking } from "@/lib/graphql/bookings";
 import { CONFIRM_COMPLETION } from "@/lib/graphql/payment";
 import { CREATE_REVIEW } from "@/lib/graphql/reviews";
+import { connectChatSocket, getMyMemberId } from "@/lib/chat/socket";
 
 export type DashboardRole = "patient" | "clinic";
 
@@ -31,6 +32,7 @@ export const clinicNavigation: SidebarItem[] = [
   { icon: "📥", label: "Booking requests", href: "/dashboard/clinic/booking-requests" },
   { icon: "🩺", label: "Procedures", href: "/dashboard/clinic/procedures" },
   { icon: "☆", label: "Reviews", href: "/dashboard/clinic/reviews" },
+  { icon: "💬", label: "Messages", href: "/dashboard/clinic/messages" },
 ];
 
 type DashboardStat = {
@@ -256,12 +258,14 @@ export function DashboardSidebar({
 }
 
 function PatientBookings() {
+  const router = useRouter();
   const { data, loading, error } = useQuery(GET_MY_BOOKINGS, {
     variables: { input: { limit: 50 } },
   });
   const [confirmCompletion, { loading: confirming }] = useMutation(CONFIRM_COMPLETION);
   const [createReview, { loading: submittingReview }] = useMutation(CREATE_REVIEW);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [openingChatFor, setOpeningChatFor] = useState<string | null>(null);
   // Session-local: bookings we know are "done" reviewing (submitted just now,
   // or the backend told us on attempt that one already exists) — there's no
   // getMyReviews query to check this ahead of time, so we only learn it by
@@ -269,6 +273,33 @@ function PatientBookings() {
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
 
   const bookings = data?.getMyBookings.list ?? [];
+
+  const handleMessageClinic = (booking: MyBooking) => {
+    setOpeningChatFor(booking._id);
+    const socket = connectChatSocket();
+    socket.emit(
+      "openRoom",
+      {
+        patientId: getMyMemberId(),
+        clinicOwnerId: booking.clinic.clinicOwnerId,
+        bookingId: booking._id,
+      },
+      (res: { status: string; roomId?: string; message?: string }) => {
+        socket.disconnect(); // one-off connection — the Messages page opens its own
+        setOpeningChatFor(null);
+        if (res.status === "roomOpened" && res.roomId) {
+          router.push(`/dashboard/messages?room=${res.roomId}`);
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Couldn't open chat",
+            text: res.message ?? "Please try again.",
+            confirmButtonColor: "#125453",
+          });
+        }
+      },
+    );
+  };
 
   const handleSubmitReview = async (bookingId: string, rating: number, text: string) => {
     try {
@@ -386,6 +417,14 @@ function PatientBookings() {
                   {booking.bookingAmount != null && (
                     <p className="mt-2 font-bold text-brand-teal-900">{money.format(booking.bookingAmount)}</p>
                   )}
+                  <button
+                    type="button"
+                    disabled={openingChatFor === booking._id}
+                    onClick={() => handleMessageClinic(booking)}
+                    className="mt-2 inline-flex min-h-9 cursor-pointer items-center rounded-lg border border-brand-line px-4 text-xs font-bold text-brand-teal-900 transition hover:border-brand-teal-500 hover:bg-brand-cream disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    💬 {openingChatFor === booking._id ? "Opening..." : "Message clinic"}
+                  </button>
                   {booking.bookingStatus === "CONFIRMED" && (
                     <Link
                       href={`/dashboard/patient/bookings/${booking._id}/pay`}

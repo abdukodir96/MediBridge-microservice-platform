@@ -10,7 +10,7 @@ export interface MyBooking {
 	bookingConfirmedDate?: string;
 	bookingAmount?: number;
 	bookingCurrency?: string;
-	clinic: { clinicName: string };
+	clinic: { clinicName: string; clinicOwnerId: string };
 	procedure: { procedureName: string };
 }
 
@@ -34,6 +34,7 @@ export const GET_MY_BOOKINGS: TypedDocumentNode<GetMyBookingsData, GetMyBookings
 				bookingCurrency
 				clinic {
 					clinicName
+					clinicOwnerId
 				}
 				procedure {
 					procedureName
