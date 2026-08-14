@@ -10,6 +10,7 @@ import { AuthGuard } from '../../libs/auth/guards/auth.guard';
 const FOLDER_PATHS: Record<UploadFolder, string> = {
 	[UploadFolder.CLINIC_GALLERY]: 'medibridge/clinics',
 	[UploadFolder.PROCEDURE_IMAGES]: 'medibridge/procedures',
+	[UploadFolder.PROFILE_IMAGE]: 'medibridge/profiles',
 };
 
 @Resolver()

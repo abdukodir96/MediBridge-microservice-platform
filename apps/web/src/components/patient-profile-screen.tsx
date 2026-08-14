@@ -14,36 +14,74 @@ import {
   useSyncExternalStore,
 } from "react";
 import Swal from "sweetalert2";
-import {
-  savePatientProfile,
-  usePatientProfile,
-} from "@/components/patient-profile-store";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { useProfileImage } from "@/components/use-profile-image";
 
-type MemberEmailProfile = {
+type MemberCountry = "CHINA" | "JAPAN" | "USA" | "VIETNAM" | "THAILAND" | "OTHER";
+type MemberLang = "EN" | "ZH" | "JA" | "KO";
+
+type MemberProfile = {
   _id: string;
   memberEmail: string;
+  memberNick: string;
+  memberFullName?: string | null;
+  memberPhone: string;
+  memberCountry?: MemberCountry | null;
+  memberLang: MemberLang;
+  memberImage?: string | null;
 };
 
 const GET_MY_PROFILE: TypedDocumentNode<{
-  getMyProfile: MemberEmailProfile;
+  getMyProfile: MemberProfile;
 }> = gql`
   query GetMyProfile {
     getMyProfile {
       _id
       memberEmail
+      memberNick
+      memberFullName
+      memberPhone
+      memberCountry
+      memberLang
+      memberImage
     }
   }
 `;
 
 const UPDATE_MY_EMAIL: TypedDocumentNode<
-  { updateMyEmail: MemberEmailProfile },
+  { updateMyEmail: { _id: string; memberEmail: string } },
   { input: { memberEmail: string } }
 > = gql`
   mutation UpdateMyEmail($input: UpdateMemberEmailInput!) {
     updateMyEmail(input: $input) {
       _id
       memberEmail
+    }
+  }
+`;
+
+const UPDATE_PROFILE: TypedDocumentNode<
+  { updateProfile: MemberProfile },
+  {
+    input: {
+      memberNick?: string;
+      memberFullName?: string;
+      memberPhone?: string;
+      memberCountry?: MemberCountry;
+      memberLang?: MemberLang;
+      memberImage?: string;
+    };
+  }
+> = gql`
+  mutation UpdateProfile($input: UpdateProfileInput!) {
+    updateProfile(input: $input) {
+      _id
+      memberNick
+      memberFullName
+      memberPhone
+      memberCountry
+      memberLang
+      memberImage
     }
   }
 `;
@@ -61,28 +99,29 @@ function getServerAccessToken() {
   return null;
 }
 
-const countries = [
-  { value: "China", label: "🇨🇳 China" },
-  { value: "South Korea", label: "🇰🇷 South Korea" },
-  { value: "Japan", label: "🇯🇵 Japan" },
-  { value: "Uzbekistan", label: "🇺🇿 Uzbekistan" },
-  { value: "United States", label: "🇺🇸 United States" },
+const countries: Array<{ value: MemberCountry; label: string }> = [
+  { value: "CHINA", label: "🇨🇳 China" },
+  { value: "JAPAN", label: "🇯🇵 Japan" },
+  { value: "USA", label: "🇺🇸 USA" },
+  { value: "VIETNAM", label: "🇻🇳 Vietnam" },
+  { value: "THAILAND", label: "🇹🇭 Thailand" },
+  { value: "OTHER", label: "🌐 Other" },
 ];
 
-const languages = [
-  "中文 (Chinese)",
-  "English",
-  "日本語 (Japanese)",
-  "한국어 (Korean)",
-  "O‘zbek tili",
+const languages: Array<{ value: MemberLang; label: string }> = [
+  { value: "EN", label: "English" },
+  { value: "ZH", label: "中文 (Chinese)" },
+  { value: "JA", label: "日本語 (Japanese)" },
+  { value: "KO", label: "한국어 (Korean)" },
 ];
 
 const countryFlags: Record<string, string> = {
-  China: "🇨🇳",
-  "South Korea": "🇰🇷",
-  Japan: "🇯🇵",
-  Uzbekistan: "🇺🇿",
-  "United States": "🇺🇸",
+  CHINA: "🇨🇳",
+  JAPAN: "🇯🇵",
+  USA: "🇺🇸",
+  VIETNAM: "🇻🇳",
+  THAILAND: "🇹🇭",
+  OTHER: "🌐",
 };
 
 const patientNavigation = [
@@ -92,25 +131,46 @@ const patientNavigation = [
 ];
 
 export function PatientProfileScreen() {
-  const profileImage = useProfileImage();
-  const { profile, snapshot } = usePatientProfile();
+  const fallbackProfileImage = useProfileImage();
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [emailDraft, setEmailDraft] = useState<string | null>(null);
+  const [saveVersion, setSaveVersion] = useState(0);
   const accessToken = useSyncExternalStore(
     subscribeToAuth,
     getAccessToken,
     getServerAccessToken,
   );
   const authenticated = Boolean(accessToken);
-  const { data: profileData } = useQuery(GET_MY_PROFILE, {
+  const { data: profileData, refetch } = useQuery(GET_MY_PROFILE, {
     skip: !authenticated,
     fetchPolicy: "network-only",
   });
-  const [updateMyEmail, { loading: saving }] = useMutation(UPDATE_MY_EMAIL);
-  const email =
-    emailDraft ?? profileData?.getMyProfile.memberEmail ?? profile.email;
+  const member = profileData?.getMyProfile;
+  const [updateMyEmail, { loading: savingEmail }] = useMutation(UPDATE_MY_EMAIL);
+  const [updateProfile, { loading: savingProfile }] = useMutation(UPDATE_PROFILE);
+  const saving = savingEmail || savingProfile;
+  const email = emailDraft ?? member?.memberEmail ?? "";
+  const fullName = member?.memberFullName || member?.memberNick || "";
+  const country = member?.memberCountry ?? "OTHER";
+  const language = member?.memberLang ?? "EN";
+
+  // Cache-freshness: read the avatar straight from this query's own data
+  // (the source of truth), not from the localStorage-backed useProfileImage()
+  // hook used elsewhere — that hook is a copy synced only on save/login, so
+  // relying on it here would show a stale image right after another tab
+  // changes the photo.
+  const avatarSrc =
+    photoPreview || uploadedImage || member?.memberImage || fallbackProfileImage;
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
 
   const handlePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -137,24 +197,47 @@ export function PatientProfileScreen() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setPendingPhoto(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    const previewUrl = URL.createObjectURL(file);
+    setPhotoPreview(previewUrl);
+    setUploadedImage(null);
+    setUploading(true);
+    try {
+      const url = await uploadImageToCloudinary(file, "PROFILE_IMAGE");
+      setUploadedImage(url);
+    } catch (error) {
+      setPhotoPreview(null);
+      await Swal.fire({
+        icon: "error",
+        title: "Upload failed",
+        text: error instanceof Error ? error.message : "Please try again.",
+        confirmButtonColor: "#125453",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const saveChanges = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const fullName = String(formData.get("fullName") ?? "").trim();
+    const nextFullName = String(formData.get("fullName") ?? "").trim();
     const nickname = String(formData.get("nickname") ?? "").trim();
     const nextEmail = String(formData.get("email") ?? "").trim().toLowerCase();
     const phone = String(formData.get("phone") ?? "").trim();
+    const nextCountry = String(formData.get("country") ?? country) as
+      | "CHINA"
+      | "JAPAN"
+      | "USA"
+      | "VIETNAM"
+      | "THAILAND"
+      | "OTHER";
+    const nextLanguage = String(formData.get("language") ?? language) as
+      | "EN"
+      | "ZH"
+      | "JA"
+      | "KO";
 
-    if (!fullName || !nickname || !nextEmail || !phone) {
+    if (!nextFullName || !nickname || !nextEmail || !phone) {
       await Swal.fire({
         icon: "warning",
         title: "Please complete your profile",
@@ -168,44 +251,75 @@ export function PatientProfileScreen() {
       await Swal.fire({
         icon: "info",
         title: "Please log in first",
-        text: "You need to be logged in to update the email stored in your account.",
+        text: "You need to be logged in to update your profile.",
+        confirmButtonColor: "#125453",
+      });
+      return;
+    }
+
+    if (uploading) {
+      await Swal.fire({
+        icon: "info",
+        title: "Please wait",
+        text: "Your photo is still uploading.",
         confirmButtonColor: "#125453",
       });
       return;
     }
 
     let savedEmail = nextEmail;
+    if (nextEmail !== member?.memberEmail) {
+      try {
+        const { data } = await updateMyEmail({
+          variables: { input: { memberEmail: nextEmail } },
+        });
+        savedEmail = data?.updateMyEmail.memberEmail ?? nextEmail;
+      } catch (error) {
+        await Swal.fire({
+          icon: "error",
+          title: "Email could not be updated",
+          text: error instanceof Error ? error.message : "Please try again.",
+          confirmButtonColor: "#125453",
+        });
+        return;
+      }
+    }
+
     try {
-      const { data } = await updateMyEmail({
-        variables: { input: { memberEmail: nextEmail } },
+      const { data } = await updateProfile({
+        variables: {
+          input: {
+            memberNick: nickname,
+            memberFullName: nextFullName,
+            memberPhone: phone,
+            memberCountry: nextCountry,
+            memberLang: nextLanguage,
+            ...(uploadedImage ? { memberImage: uploadedImage } : {}),
+          },
+        },
       });
-      savedEmail = data?.updateMyEmail.memberEmail ?? nextEmail;
+      const saved = data?.updateProfile;
+      localStorage.setItem("memberNick", nickname);
+      if (saved?.memberImage) {
+        localStorage.setItem("memberImage", saved.memberImage);
+      }
+      window.dispatchEvent(new Event("storage"));
     } catch (error) {
       await Swal.fire({
         icon: "error",
-        title: "Email could not be updated",
+        title: "Profile could not be updated",
         text: error instanceof Error ? error.message : "Please try again.",
         confirmButtonColor: "#125453",
       });
       return;
     }
 
-    savePatientProfile({
-      fullName,
-      nickname,
-      email: savedEmail,
-      phone,
-      country: String(formData.get("country") ?? profile.country),
-      language: String(formData.get("language") ?? profile.language),
-    });
-    setEmailDraft(savedEmail);
     localStorage.setItem("memberEmail", savedEmail);
-
-    if (pendingPhoto) {
-      localStorage.setItem("memberImage", pendingPhoto);
-      window.dispatchEvent(new Event("storage"));
-      setPendingPhoto(null);
-    }
+    setEmailDraft(savedEmail);
+    setPhotoPreview(null);
+    setUploadedImage(null);
+    await refetch();
+    setSaveVersion((current) => current + 1);
 
     await Swal.fire({
       icon: "success",
@@ -220,16 +334,17 @@ export function PatientProfileScreen() {
   const cancelChanges = () => {
     formRef.current?.reset();
     setEmailDraft(null);
-    setPendingPhoto(null);
+    setPhotoPreview(null);
+    setUploadedImage(null);
   };
 
   return (
     <main className="relative z-20 flex-1 bg-white py-4 lg:py-5">
       <div className="relative z-20 grid min-h-[650px] w-full overflow-visible border border-brand-line bg-white lg:grid-cols-[310px_minmax(0,1fr)]">
         <ProfileSidebar
-          profileImage={pendingPhoto ?? profileImage}
-          fullName={profile.fullName}
-          country={profile.country}
+          profileImage={avatarSrc}
+          fullName={fullName}
+          country={country}
         />
 
         <section className="min-w-0 px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
@@ -243,19 +358,26 @@ export function PatientProfileScreen() {
           </header>
 
           <form
-            key={snapshot}
+            key={`${member ? "loaded" : "loading"}-${saveVersion}`}
             ref={formRef}
             onSubmit={saveChanges}
             className="mt-7"
           >
             <div className="flex flex-col gap-5 border-b border-brand-line pb-7 sm:flex-row sm:items-center">
-              <Image
-                src={pendingPhoto ?? profileImage}
-                alt={profile.fullName}
-                width={88}
-                height={88}
-                className="h-[88px] w-[88px] rounded-full border border-brand-line object-cover"
-              />
+              <div className="relative h-[88px] w-[88px] shrink-0">
+                <Image
+                  src={avatarSrc}
+                  alt={fullName}
+                  width={88}
+                  height={88}
+                  className="h-[88px] w-[88px] rounded-full border border-brand-line object-cover"
+                />
+                {uploading && (
+                  <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-[11px] font-semibold text-white">
+                    Uploading...
+                  </span>
+                )}
+              </div>
               <div>
                 <input
                   ref={fileInputRef}
@@ -280,7 +402,7 @@ export function PatientProfileScreen() {
                 <input
                   required
                   name="fullName"
-                  defaultValue={profile.fullName}
+                  defaultValue={fullName}
                   className={inputClass}
                 />
               </ProfileField>
@@ -288,7 +410,7 @@ export function PatientProfileScreen() {
                 <input
                   required
                   name="nickname"
-                  defaultValue={profile.nickname}
+                  defaultValue={member?.memberNick ?? ""}
                   className={inputClass}
                 />
               </ProfileField>
@@ -308,25 +430,22 @@ export function PatientProfileScreen() {
                   required
                   name="phone"
                   type="tel"
-                  defaultValue={profile.phone}
+                  defaultValue={member?.memberPhone ?? ""}
                   className={inputClass}
                 />
               </ProfileField>
               <ProfileField label="Country">
                 <ProfileSelect
                   name="country"
-                  defaultValue={profile.country}
+                  defaultValue={country}
                   options={countries}
                 />
               </ProfileField>
               <ProfileField label="Preferred language">
                 <ProfileSelect
                   name="language"
-                  defaultValue={profile.language}
-                  options={languages.map((language) => ({
-                    value: language,
-                    label: language,
-                  }))}
+                  defaultValue={language}
+                  options={languages}
                 />
               </ProfileField>
             </div>

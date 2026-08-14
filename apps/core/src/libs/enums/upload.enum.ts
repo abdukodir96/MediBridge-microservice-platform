@@ -7,5 +7,6 @@ import { registerEnumType } from '@nestjs/graphql';
 export enum UploadFolder {
 	CLINIC_GALLERY = 'CLINIC_GALLERY',
 	PROCEDURE_IMAGES = 'PROCEDURE_IMAGES',
+	PROFILE_IMAGE = 'PROFILE_IMAGE',
 }
 registerEnumType(UploadFolder, { name: 'UploadFolder' });

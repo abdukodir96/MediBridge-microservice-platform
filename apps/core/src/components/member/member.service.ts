@@ -11,6 +11,7 @@ import {
 	MemberInput,
 	LoginInput,
 	UpdateMemberEmailInput,
+	UpdateProfileInput,
 } from '../../libs/dto/member/member.input';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { AuthService } from '../auth/auth.service';
@@ -130,5 +131,18 @@ export class MemberService {
 
 			throw new InternalServerErrorException('Email update failed');
 		}
+	}
+
+	// Self-service profile edit — no ownership check needed, memberId always
+	// comes from the caller's own token (see resolver), never an argument.
+	public async updateProfile(
+		memberId: ObjectId,
+		input: UpdateProfileInput,
+	): Promise<Member> {
+		const result = await this.memberModel
+			.findByIdAndUpdate(memberId, input, { new: true })
+			.exec();
+		if (!result) throw new NotFoundException('Member not found');
+		return result;
 	}
 }

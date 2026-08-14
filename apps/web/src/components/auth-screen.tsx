@@ -11,17 +11,17 @@ import { useRouter } from "next/navigation";
 
 type SignupRole = "PATIENT" | "CLINIC";
 type MemberType = "PATIENT" | "CLINIC" | "ADMIN";
-type AuthMember = { _id: string; memberEmail: string; memberNick: string; memberType: MemberType; accessToken: string };
+type AuthMember = { _id: string; memberEmail: string; memberNick: string; memberType: MemberType; memberImage?: string | null; accessToken: string };
 
 const LOGIN: TypedDocumentNode<{ login: AuthMember }, { input: { memberEmail: string; memberPassword: string } }> = gql`
   mutation Login($input: LoginInput!) {
-    login(input: $input) { _id memberEmail memberNick memberType accessToken }
+    login(input: $input) { _id memberEmail memberNick memberType memberImage accessToken }
   }
 `;
 
 const SIGNUP: TypedDocumentNode<{ signup: AuthMember }, { input: { memberEmail: string; memberPassword: string; memberNick: string; memberPhone: string; memberType: SignupRole; memberLang: "EN" } }> = gql`
   mutation Signup($input: MemberInput!) {
-    signup(input: $input) { _id memberEmail memberNick memberType accessToken }
+    signup(input: $input) { _id memberEmail memberNick memberType memberImage accessToken }
   }
 `;
 
@@ -64,6 +64,11 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
     localStorage.setItem("memberType", member.memberType);
     localStorage.setItem("memberEmail", member.memberEmail);
     localStorage.setItem("memberNick", member.memberNick);
+    if (member.memberImage) {
+      localStorage.setItem("memberImage", member.memberImage);
+    } else {
+      localStorage.removeItem("memberImage");
+    }
     window.dispatchEvent(new Event("storage"));
     if (member.memberType === "ADMIN") router.push("/admin");
     else if (member.memberType === "CLINIC") router.push("/dashboard/clinic");

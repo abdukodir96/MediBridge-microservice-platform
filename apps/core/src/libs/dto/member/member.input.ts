@@ -71,3 +71,36 @@ export class UpdateMemberEmailInput {
 	@Field(() => String)
 	memberEmail: string;
 }
+
+// Self-service profile edit — every field optional (partial update), since
+// the caller can only ever target their own account (see updateProfile:
+// ownerId comes from the token, never an argument).
+@InputType()
+export class UpdateProfileInput {
+	@IsOptional()
+	@Length(2, 25)
+	@Field(() => String, { nullable: true })
+	memberNick?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberFullName?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberPhone?: string;
+
+	@IsOptional()
+	@IsEnum(MemberCountry)
+	@Field(() => MemberCountry, { nullable: true })
+	memberCountry?: MemberCountry;
+
+	@IsOptional()
+	@IsEnum(MemberLang)
+	@Field(() => MemberLang, { nullable: true })
+	memberLang?: MemberLang;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberImage?: string;
+}

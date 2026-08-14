@@ -11,7 +11,9 @@ function subscribe(callback: () => void) {
 
 function getSnapshot() {
   const image = localStorage.getItem("memberImage");
-  return image?.startsWith("/") || image?.startsWith("data:")
+  return image?.startsWith("/") ||
+    image?.startsWith("data:") ||
+    image?.startsWith("https://")
     ? image
     : DEFAULT_PROFILE_IMAGE;
 }

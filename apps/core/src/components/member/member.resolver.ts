@@ -7,6 +7,7 @@ import {
 	MemberInput,
 	LoginInput,
 	UpdateMemberEmailInput,
+	UpdateProfileInput,
 } from '../../libs/dto/member/member.input';
 import { AuthGuard } from '../../libs/auth/guards/auth.guard';
 import { AuthMember } from '../../libs/auth/decorators/auth-member.decorator';
@@ -48,5 +49,15 @@ export class MemberResolver {
 	): Promise<Member> {
 		console.log('Mutation: updateMyEmail');
 		return await this.memberService.updateEmail(authMember._id, input);
+	}
+
+	@Mutation(() => Member)
+	@UseGuards(AuthGuard)
+	public async updateProfile(
+		@AuthMember() authMember: Member,
+		@Args('input') input: UpdateProfileInput,
+	): Promise<Member> {
+		console.log('Mutation: updateProfile');
+		return await this.memberService.updateProfile(authMember._id, input);
 	}
 }

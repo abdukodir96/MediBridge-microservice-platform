@@ -13,7 +13,7 @@ const GET_UPLOAD_SIGNATURE = gql`
 	}
 `;
 
-export type UploadFolder = "CLINIC_GALLERY" | "PROCEDURE_IMAGES";
+export type UploadFolder = "CLINIC_GALLERY" | "PROCEDURE_IMAGES" | "PROFILE_IMAGE";
 
 interface GetUploadSignatureData {
 	getUploadSignature: {
