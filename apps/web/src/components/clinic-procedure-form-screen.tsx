@@ -19,8 +19,15 @@ import {
   type ProcedureCategory,
   type ProcedureCurrency,
 } from "@/lib/graphql/procedures";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
 const categories: ProcedureCategory[] = ["FACE", "BODY", "SKIN", "DENTAL", "HAIR", "EYE"];
+
+type ImageItem = {
+  id: string;
+  name: string;
+  url: string | null; // null while uploading
+};
 
 function formatCategory(category: string) {
   return category.charAt(0) + category.slice(1).toLowerCase();
@@ -101,7 +108,9 @@ function ProcedureForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [category, setCategory] = useState<ProcedureCategory>(procedure?.procedureCategory ?? "FACE");
   const [currency, setCurrency] = useState<ProcedureCurrency>(procedure?.procedureCurrency ?? "USD");
-  const [images, setImages] = useState<string[]>(procedure?.procedureImages ?? []);
+  const [images, setImages] = useState<ImageItem[]>(
+    () => procedure?.procedureImages.map((url, index) => ({ id: `stored-${index}-${url}`, name: url, url })) ?? [],
+  );
   const [priceMin, setPriceMin] = useState(procedure?.procedurePriceMin?.toString() ?? "");
   const [priceMax, setPriceMax] = useState(procedure?.procedurePriceMax?.toString() ?? "");
   const isEditing = mode === "edit";
@@ -147,12 +156,32 @@ function ProcedureForm({
       return;
     }
 
-    setImages((current) => [
-      ...current,
-      ...selected
-        .map((file) => file.name)
-        .filter((name) => !current.includes(name)),
-    ]);
+    const placeholders: ImageItem[] = selected.map((file) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+      name: file.name,
+      url: null,
+    }));
+    setImages((current) => [...current, ...placeholders]);
+
+    await Promise.all(
+      selected.map(async (file, index) => {
+        const { id } = placeholders[index];
+        try {
+          const url = await uploadImageToCloudinary(file, "PROCEDURE_IMAGES");
+          setImages((current) =>
+            current.map((item) => (item.id === id ? { ...item, url } : item)),
+          );
+        } catch (err) {
+          setImages((current) => current.filter((item) => item.id !== id));
+          await Swal.fire({
+            icon: "error",
+            title: "Upload failed",
+            text: (err as Error).message,
+            confirmButtonColor: "#125453",
+          });
+        }
+      }),
+    );
   };
 
   const submitProcedure = async (event: FormEvent<HTMLFormElement>) => {
@@ -196,6 +225,16 @@ function ProcedureForm({
       return;
     }
 
+    if (images.some((item) => item.url === null)) {
+      await Swal.fire({
+        icon: "info",
+        title: "Still uploading",
+        text: "Wait for all images to finish uploading before saving.",
+        confirmButtonColor: "#125453",
+      });
+      return;
+    }
+
     const input = {
       procedureName: name,
       procedureCategory: category,
@@ -204,7 +243,7 @@ function ProcedureForm({
       procedurePriceMax: priceMaxValue,
       procedureCurrency: currency,
       procedureDuration: duration,
-      procedureImages: images,
+      procedureImages: images.map((item) => item.url as string),
       procedureClinicId: clinicId,
     };
 
@@ -385,16 +424,16 @@ function ProcedureForm({
             <div className="mt-3 flex flex-wrap gap-2">
               {images.map((image) => (
                 <span
-                  key={image}
+                  key={image.id}
                   className="inline-flex items-center gap-2 rounded-full bg-brand-teal-100 px-3 py-1.5 text-xs font-semibold text-brand-teal-700"
                 >
-                  📎 {image}
+                  {image.url === null ? "⏳" : "📎"} {image.name}
                   <button
                     type="button"
-                    aria-label={`Remove ${image}`}
+                    aria-label={`Remove ${image.name}`}
                     onClick={() =>
                       setImages((current) =>
-                        current.filter((item) => item !== image),
+                        current.filter((item) => item.id !== image.id),
                       )
                     }
                     className="cursor-pointer text-brand-muted hover:text-red-600"
@@ -410,7 +449,7 @@ function ProcedureForm({
         <div className="mt-7 flex flex-wrap justify-end gap-3 border-t border-brand-line pt-6">
           <button
             type="submit"
-            disabled={saving || priceInvalid}
+            disabled={saving || priceInvalid || images.some((item) => item.url === null)}
             className="min-h-12 cursor-pointer rounded-xl bg-brand-teal-700 px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
           >
             {saving ? "Saving..." : isEditing ? "Save changes" : "Add procedure"}

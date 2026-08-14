@@ -19,6 +19,7 @@ interface UpdateClinicData {
 		clinicDesc: string;
 		clinicSpecialties: ClinicSpecialty[];
 		clinicLangs: MemberLang[];
+		clinicImages: string[];
 	};
 }
 interface UpdateClinicVars {
@@ -39,6 +40,7 @@ export const UPDATE_CLINIC: TypedDocumentNode<UpdateClinicData, UpdateClinicVars
 			clinicDesc
 			clinicSpecialties
 			clinicLangs
+			clinicImages
 		}
 	}
 `;

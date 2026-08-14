@@ -18,6 +18,7 @@ import { useClinic } from "@/context/clinic-context";
 import { UPDATE_CLINIC } from "@/lib/graphql/clinic-settings";
 import type { Clinic, ClinicSpecialty, MemberLang } from "@/lib/graphql/clinics";
 import { titleCaseEnum, langLabel } from "@/lib/clinic-format";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
 const SPECIALTY_OPTIONS: ClinicSpecialty[] = [
   "PLASTIC_SURGERY",
@@ -29,13 +30,6 @@ const SPECIALTY_OPTIONS: ClinicSpecialty[] = [
 ];
 
 const LANG_OPTIONS: MemberLang[] = ["EN", "ZH", "JA", "KO"];
-
-const galleryTones = [
-  "from-brand-teal-500 to-brand-teal-900",
-  "from-brand-teal-700 to-brand-teal-900",
-  "from-brand-teal-500 to-brand-teal-700",
-  "from-brand-gold to-amber-700",
-];
 
 const MAX_GALLERY_IMAGES = 10;
 
@@ -74,14 +68,17 @@ export function ClinicProfileSettingsScreen() {
 
 type GalleryItem = {
   id: string;
-  name: string;
-  previewUrl?: string;
+  // The blob preview shown instantly on selection; swapped for the real
+  // Cloudinary secure_url once the upload finishes.
+  previewUrl: string;
+  url: string | null; // null while uploading
 };
 
 function createStoredGalleryItems(images: string[]): GalleryItem[] {
-  return images.map((name, index) => ({
-    id: `stored-${index}-${name}`,
-    name,
+  return images.map((url, index) => ({
+    id: `stored-${index}-${url}`,
+    previewUrl: url,
+    url,
   }));
 }
 
@@ -126,16 +123,6 @@ function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
     const selected = Array.from(files);
     if (selected.length === 0) return;
 
-    const existingNames = new Set(gallery.map((item) => item.name));
-    const uniqueSelected = selected.filter(
-      (file, index) =>
-        !existingNames.has(file.name) &&
-        selected.findIndex((candidate) => candidate.name === file.name) ===
-          index,
-    );
-
-    if (uniqueSelected.length === 0) return;
-
     const availableSlots = MAX_GALLERY_IMAGES - gallery.length;
     if (availableSlots <= 0) {
       await Swal.fire({
@@ -147,15 +134,15 @@ function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
       return;
     }
 
-    let filesToAdd = uniqueSelected;
-    if (uniqueSelected.length > availableSlots) {
+    let filesToAdd = selected;
+    if (selected.length > availableSlots) {
       await Swal.fire({
         icon: "warning",
         title: "Only some images were added",
         text: `Your gallery can contain up to ${MAX_GALLERY_IMAGES} images. ${availableSlots} remaining slot${availableSlots === 1 ? "" : "s"} will be filled.`,
         confirmButtonColor: "#125453",
       });
-      filesToAdd = uniqueSelected.slice(0, availableSlots);
+      filesToAdd = selected.slice(0, availableSlots);
     }
 
     const invalidType = filesToAdd.find(
@@ -184,24 +171,20 @@ function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
       return;
     }
 
-    setGallery((current) => {
-      const existingNames = new Set(current.map((item) => item.name));
-      const additions = filesToAdd
-        .filter((file) => !existingNames.has(file.name))
-        .slice(0, MAX_GALLERY_IMAGES - current.length)
-        .map((file) => {
-          const previewUrl = URL.createObjectURL(file);
-          previewUrlsRef.current.add(previewUrl);
-
-          return {
-            id: `${file.name}-${file.size}-${file.lastModified}`,
-            name: file.name,
-            previewUrl,
-          };
-        });
-
-      return [...current, ...additions];
+    // Add instant blob-preview placeholders (uploading), then swap each in
+    // for its real Cloudinary url as its own upload resolves — independent
+    // of the others, not a single all-or-nothing batch.
+    const placeholders = filesToAdd.map((file) => {
+      const previewUrl = URL.createObjectURL(file);
+      previewUrlsRef.current.add(previewUrl);
+      const id = `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`;
+      return { id, previewUrl, file };
     });
+
+    setGallery((current) => [
+      ...current,
+      ...placeholders.map(({ id, previewUrl }) => ({ id, previewUrl, url: null })),
+    ]);
 
     requestAnimationFrame(() => {
       galleryScrollRef.current?.scrollTo({
@@ -209,6 +192,27 @@ function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
         behavior: "smooth",
       });
     });
+
+    await Promise.all(
+      placeholders.map(async ({ id, file, previewUrl }) => {
+        try {
+          const url = await uploadImageToCloudinary(file, "CLINIC_GALLERY");
+          setGallery((current) =>
+            current.map((item) => (item.id === id ? { ...item, url } : item)),
+          );
+        } catch (err) {
+          setGallery((current) => current.filter((item) => item.id !== id));
+          URL.revokeObjectURL(previewUrl);
+          previewUrlsRef.current.delete(previewUrl);
+          await Swal.fire({
+            icon: "error",
+            title: "Upload failed",
+            text: (err as Error).message,
+            confirmButtonColor: "#125453",
+          });
+        }
+      }),
+    );
   };
 
   const removeGalleryItem = (item: GalleryItem) => {
@@ -241,6 +245,16 @@ function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
       return;
     }
 
+    if (gallery.some((item) => item.url === null)) {
+      await Swal.fire({
+        icon: "info",
+        title: "Still uploading",
+        text: "Wait for all gallery images to finish uploading before saving.",
+        confirmButtonColor: "#125453",
+      });
+      return;
+    }
+
     try {
       await updateClinic({
         variables: {
@@ -251,6 +265,7 @@ function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
             clinicDesc: description || undefined,
             clinicSpecialties: specialties,
             clinicLangs: langs,
+            clinicImages: gallery.map((item) => item.url as string),
           },
         },
       });
@@ -408,26 +423,20 @@ function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
               className="overflow-x-auto overscroll-x-contain pb-3 scroll-smooth [scrollbar-gutter:stable]"
             >
               <div className="flex min-w-max gap-3">
-                {gallery.map((image, index) => (
+                {gallery.map((image) => (
                   <div
                     key={image.id}
-                    style={
-                      image.previewUrl
-                        ? { backgroundImage: `url(${image.previewUrl})` }
-                        : undefined
-                    }
-                    className={`relative aspect-[4/3] w-[250px] shrink-0 overflow-hidden rounded-xl bg-cover bg-center bg-no-repeat sm:w-[280px] lg:w-[300px] ${
-                      image.previewUrl
-                        ? "bg-brand-cream"
-                        : `bg-linear-to-br ${galleryTones[index % galleryTones.length]}`
-                    }`}
+                    style={{ backgroundImage: `url(${image.url ?? image.previewUrl})` }}
+                    className="relative aspect-[4/3] w-[250px] shrink-0 overflow-hidden rounded-xl bg-brand-cream bg-cover bg-center bg-no-repeat sm:w-[280px] lg:w-[300px]"
                   >
-                    <span className="absolute inset-x-2 bottom-2 truncate rounded-md bg-black/55 px-2 py-1 text-[10px] text-white backdrop-blur-sm">
-                      {image.name}
-                    </span>
+                    {image.url === null && (
+                      <span className="absolute inset-x-2 bottom-2 truncate rounded-md bg-black/55 px-2 py-1 text-[10px] text-white backdrop-blur-sm">
+                        Uploading...
+                      </span>
+                    )}
                     <button
                       type="button"
-                      aria-label={`Remove ${image.name}`}
+                      aria-label="Remove image"
                       onClick={() => removeGalleryItem(image)}
                       className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/90 text-sm text-brand-ink shadow-sm transition hover:bg-red-50 hover:text-red-600"
                     >
@@ -464,7 +473,7 @@ function ClinicProfileForm({ clinic }: { clinic: Clinic }) {
       <div className="mt-7 flex flex-wrap justify-end gap-3 border-t border-brand-line pt-6">
         <button
           type="submit"
-          disabled={loading || specialties.length === 0}
+          disabled={loading || specialties.length === 0 || gallery.some((item) => item.url === null)}
           className="min-h-12 cursor-pointer rounded-xl bg-brand-teal-700 px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-brand-teal-900 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
         >
           {loading ? "Saving..." : "Save changes"}
