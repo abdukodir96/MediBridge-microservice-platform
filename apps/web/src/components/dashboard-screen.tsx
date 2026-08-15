@@ -9,9 +9,12 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { useProfileImage } from "@/components/use-profile-image";
 import { useClinicProfile } from "@/components/clinic-profile-store";
 import { GET_MY_BOOKINGS, type BookingStatus, type MyBooking } from "@/lib/graphql/bookings";
+import { GET_CLINIC_BOOKINGS } from "@/lib/graphql/clinic-bookings";
 import { CONFIRM_COMPLETION } from "@/lib/graphql/payment";
 import { CREATE_REVIEW } from "@/lib/graphql/reviews";
 import { connectChatSocket, getMyMemberId } from "@/lib/chat/socket";
+import { useClinic } from "@/context/clinic-context";
+import { computeClinicStats, computePatientStats } from "@/lib/bookings/stats";
 
 export type DashboardRole = "patient" | "clinic";
 
@@ -41,20 +44,6 @@ type DashboardStat = {
   detail: string;
   accent?: boolean;
 };
-
-const patientStats: DashboardStat[] = [
-  { label: "Active bookings", value: "3", detail: "Requested + confirmed + paid" },
-  { label: "In escrow", value: "$2,520", detail: "Protected treatment funds" },
-  { label: "Completed", value: "1", detail: "Treatment completed" },
-  { label: "Cancelled", value: "0", detail: "No cancellations" },
-];
-
-const clinicStats: DashboardStat[] = [
-  { label: "New requests", value: "2", detail: "Needs your reply", accent: true },
-  { label: "Active bookings", value: "4", detail: "Confirmed + paid" },
-  { label: "Earnings (escrow)", value: "$9.9K", detail: "Paid + completed" },
-  { label: "Rating", value: "4.9", detail: "312 patient reviews" },
-];
 
 const statusLabels: Record<BookingStatus, string> = {
   REQUESTED: "Requested",
@@ -119,7 +108,6 @@ function BookingSubmittedBanner() {
 export function DashboardScreen({ role }: { role: DashboardRole }) {
   const isPatient = role === "patient";
   const navigation = isPatient ? patientNavigation : clinicNavigation;
-  const stats = isPatient ? patientStats : clinicStats;
   const profileImage = useProfileImage();
 
   return (
@@ -158,31 +146,89 @@ export function DashboardScreen({ role }: { role: DashboardRole }) {
             </Link>
           </header>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {stats.map((stat) => (
-              <article
-                key={stat.label}
-                className="min-h-[150px] rounded-xl border border-brand-line bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <p className="text-sm font-medium text-brand-muted">{stat.label}</p>
-                <strong className="mt-3 block font-serif text-[30px] font-semibold leading-none text-brand-teal-900">
-                  {stat.value}
-                </strong>
-                <p
-                  className={`mt-3 text-xs uppercase leading-5 ${
-                    stat.accent ? "text-amber-600" : "text-brand-muted"
-                  }`}
-                >
-                  {stat.detail}
-                </p>
-              </article>
-            ))}
-          </div>
+          {isPatient ? <PatientStatCards /> : <ClinicStatCards />}
 
           {isPatient ? <PatientBookings /> : <ClinicRequests />}
         </section>
       </div>
     </main>
+  );
+}
+
+function StatCardsGrid({ stats }: { stats: DashboardStat[] }) {
+  return (
+    <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {stats.map((stat) => (
+        <article
+          key={stat.label}
+          className="min-h-[150px] rounded-xl border border-brand-line bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-md"
+        >
+          <p className="text-sm font-medium text-brand-muted">{stat.label}</p>
+          <strong className="mt-3 block font-serif text-[30px] font-semibold leading-none text-brand-teal-900">
+            {stat.value}
+          </strong>
+          <p
+            className={`mt-3 text-xs uppercase leading-5 ${
+              stat.accent ? "text-amber-600" : "text-brand-muted"
+            }`}
+          >
+            {stat.detail}
+          </p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+// Counted from a single, unfiltered, capped fetch (limit: 50 — the backend's
+// @Max(50) DoS guard on BookingsInquiry) rather than a real aggregation. Fine
+// at demo scale; a member with more than 50 bookings would need a backend
+// $count/$sum query instead.
+function PatientStatCards() {
+  const { data } = useQuery(GET_MY_BOOKINGS, {
+    variables: { input: { limit: 50 } },
+  });
+  const bookings = data?.getMyBookings.list ?? [];
+  const stats = computePatientStats(bookings);
+
+  return (
+    <StatCardsGrid
+      stats={[
+        { label: "Active bookings", value: String(stats.active), detail: "Requested + confirmed + paid" },
+        { label: "In escrow", value: money.format(stats.inEscrow), detail: "Protected treatment funds" },
+        { label: "Completed", value: String(stats.completed), detail: "Treatment completed" },
+        { label: "Cancelled", value: String(stats.cancelled), detail: "No cancellations" },
+      ]}
+    />
+  );
+}
+
+function ClinicStatCards() {
+  const { clinic } = useClinic();
+  const { data } = useQuery(GET_CLINIC_BOOKINGS, {
+    variables: { input: { limit: 50 } },
+  });
+  const bookings = data?.getClinicBookings.list ?? [];
+  const stats = computeClinicStats(bookings);
+
+  return (
+    <StatCardsGrid
+      stats={[
+        {
+          label: "New requests",
+          value: String(stats.newRequests),
+          detail: "Needs your reply",
+          accent: stats.newRequests > 0,
+        },
+        { label: "Active bookings", value: String(stats.activeBookings), detail: "Confirmed + paid" },
+        { label: "Earnings (escrow)", value: money.format(stats.earnings), detail: "Paid + completed" },
+        {
+          label: "Rating",
+          value: clinic.clinicRating.toFixed(1),
+          detail: `${clinic.clinicReviewCount} patient reviews`,
+        },
+      ]}
+    />
   );
 }
 
