@@ -10,5 +10,5 @@ export const config = {
   // Only the localized, public route tree. Dashboard/admin are
   // deliberately excluded — they're not SEO targets (already kept out of
   // the public nav/sitemap) and stay English-only, unprefixed.
-  matcher: ["/", "/(en|zh)/:path*", "/clinics/:path*", "/login", "/signup", "/booking/:path*"],
+  matcher: ["/", "/(en|zh|ko|ja)/:path*", "/clinics/:path*", "/login", "/signup", "/booking/:path*"],
 };

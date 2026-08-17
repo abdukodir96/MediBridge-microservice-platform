@@ -1,0 +1,52 @@
+{
+  "landing": {
+    "badge": "✦ 매년 117만 명 이상의 환자가 한국을 신뢰합니다",
+    "heroTitleStart": "한국의",
+    "heroTitleEmphasis": "신뢰할 수 있는",
+    "heroTitleEnd": "클리닉으로 가는 다리.",
+    "heroSubtitle": "인증된 성형외과 및 피부과 클리닉을 비교하고, 안심하고 예약하며, 안전하게 결제하세요 — 모든 과정을 원하는 언어로 이용할 수 있습니다.",
+    "viewAllClinics": "모든 클리닉 보기"
+  },
+  "clinics": {
+    "title": "클리닉 찾기",
+    "subtitle": "시술, 가격, 언어별로 인증된 클리닉을 검색하세요.",
+    "resultsCount": "클리닉 {count}곳 검색됨",
+    "filters": {
+      "heading": "필터",
+      "clearAll": "전체 초기화",
+      "specialty": "전문 분야",
+      "language": "언어",
+      "location": "지역",
+      "priceRange": "가격대"
+    },
+    "specialty": {
+      "PLASTIC_SURGERY": "성형외과",
+      "DERMATOLOGY": "피부과",
+      "DENTAL": "치과",
+      "OPHTHALMOLOGY": "안과",
+      "HAIR_TRANSPLANT": "모발이식",
+      "ORTHOPEDICS": "정형외과"
+    },
+    "lang": {
+      "EN": "영어",
+      "ZH": "중국어",
+      "JA": "일본어",
+      "KO": "한국어"
+    },
+    "sort": {
+      "label": "정렬",
+      "TOP_RATED": "평점 높은순",
+      "MOST_REVIEWED": "리뷰 많은순",
+      "PRICE_LOW": "가격 낮은순",
+      "PRICE_HIGH": "가격 높은순"
+    },
+    "verified": "인증됨",
+    "fromPrice": "${price}부터",
+    "emptyState": "클리닉을 찾을 수 없습니다",
+    "emptyStateHint": "필터를 조정해 보세요.",
+    "pagination": {
+      "previous": "이전",
+      "next": "다음"
+    }
+  }
+}

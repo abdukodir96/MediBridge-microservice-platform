@@ -1,7 +1,7 @@
 import { defineRouting } from "next-intl/routing";
 
 export const routing = defineRouting({
-  locales: ["en", "zh"], // ja, ko added once the ZH pattern is verified
+  locales: ["en", "zh", "ko", "ja"],
   defaultLocale: "en",
   // "as-needed" — the default locale (en) gets NO URL prefix (/clinics,
   // not /en/clinics). This is deliberate: the whole app already has

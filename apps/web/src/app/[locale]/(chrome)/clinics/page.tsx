@@ -1,12 +1,12 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { LikeButton } from "@/components/like-button";
 import { Pagination } from "@/components/pagination";
 import { ClinicsFilterPanel, ClinicsSort } from "@/components/clinics-filter-panel";
 import { fetchClinics } from "@/lib/graphql/clinics";
 import { toBackendSort } from "@/lib/clinic-sort";
 import { toBackendSpecialties, toBackendLangs } from "@/lib/clinic-filters";
-import { titleCaseEnum } from "@/lib/clinic-format";
-import { CARD_GRADIENTS, clinicBadge } from "@/lib/clinic-card";
+import { CARD_GRADIENTS, clinicBadge, clinicBadgeKey } from "@/lib/clinic-card";
 
 const CLINICS_PER_PAGE = 6;
 
@@ -35,7 +35,7 @@ export default async function ClinicsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const params = await searchParams;
+  const [params, t] = await Promise.all([searchParams, getTranslations("clinics")]);
 
   const selectedSpecialties = parseList(firstParam(params.specialties) ?? firstParam(params.treatment));
   const selectedLocations = parseList(firstParam(params.locations) ?? firstParam(params.city));
@@ -94,7 +94,7 @@ export default async function ClinicsPage({
         <main className="flex-1 p-6 sm:p-8">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div className="text-sm text-brand-muted">
-              <b className="text-brand-ink">{total} clinics</b>
+              <b className="text-brand-ink">{t("resultsCount", { count: total })}</b>
               {resultContext ? ` in ${resultContext}` : ""}
             </div>
             <ClinicsSort value={uiSort} />
@@ -116,7 +116,7 @@ export default async function ClinicsPage({
                     <div className={`relative h-64 bg-linear-to-br ${CARD_GRADIENTS[index % CARD_GRADIENTS.length]}`}>
                       <Link href={`/clinics/${clinic._id}`} className="absolute inset-0" aria-label={clinic.clinicName} />
                       <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-teal-700">
-                        ✦ {clinicBadge(clinic)}
+                        ✦ {clinicBadgeKey(clinic) === "VERIFIED" ? t("verified") : clinicBadge(clinic)}
                       </span>
                       <LikeButton />
                     </div>
@@ -133,7 +133,7 @@ export default async function ClinicsPage({
                             key={specialty}
                             className="rounded-full bg-brand-teal-100 px-3 py-1 text-sm font-semibold text-brand-teal-700"
                           >
-                            {titleCaseEnum(specialty)}
+                            {t(`specialty.${specialty}`)}
                           </span>
                         ))}
                       </div>
@@ -144,7 +144,7 @@ export default async function ClinicsPage({
                         </span>
                         {clinic.startingPrice != null && (
                           <span className="text-base text-brand-muted">
-                            from <b className="text-brand-teal-900">${clinic.startingPrice.toLocaleString()}</b>
+                            {t("fromPrice", { price: clinic.startingPrice.toLocaleString() })}
                           </span>
                         )}
                       </div>
@@ -155,8 +155,8 @@ export default async function ClinicsPage({
 
               {clinics.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-brand-line bg-brand-cream/40 px-6 py-16 text-center">
-                  <h2 className="font-serif text-2xl font-semibold text-brand-teal-900">No clinics found</h2>
-                  <p className="mt-2 text-brand-muted">Try changing one or more search options.</p>
+                  <h2 className="font-serif text-2xl font-semibold text-brand-teal-900">{t("emptyState")}</h2>
+                  <p className="mt-2 text-brand-muted">{t("emptyStateHint")}</p>
                 </div>
               )}
 

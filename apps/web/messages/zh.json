@@ -6,5 +6,47 @@
     "heroTitleEnd": "诊所的桥梁。",
     "heroSubtitle": "比较经过认证的整形外科和皮肤科诊所，放心预约，安全支付——全程用您的语言为您服务。",
     "viewAllClinics": "查看所有诊所"
+  },
+  "clinics": {
+    "title": "寻找诊所",
+    "subtitle": "按治疗项目、价格和语言搜索认证诊所。",
+    "resultsCount": "找到 {count} 家诊所",
+    "filters": {
+      "heading": "筛选",
+      "clearAll": "清除全部",
+      "specialty": "专科",
+      "language": "语言",
+      "location": "地区",
+      "priceRange": "价格范围"
+    },
+    "specialty": {
+      "PLASTIC_SURGERY": "整形外科",
+      "DERMATOLOGY": "皮肤科",
+      "DENTAL": "牙科",
+      "OPHTHALMOLOGY": "眼科",
+      "HAIR_TRANSPLANT": "植发",
+      "ORTHOPEDICS": "骨科"
+    },
+    "lang": {
+      "EN": "英语",
+      "ZH": "中文",
+      "JA": "日语",
+      "KO": "韩语"
+    },
+    "sort": {
+      "label": "排序",
+      "TOP_RATED": "评分最高",
+      "MOST_REVIEWED": "评价最多",
+      "PRICE_LOW": "价格从低到高",
+      "PRICE_HIGH": "价格从高到低"
+    },
+    "verified": "已认证",
+    "fromPrice": "起价 ${price}",
+    "emptyState": "未找到诊所",
+    "emptyStateHint": "请尝试调整筛选条件。",
+    "pagination": {
+      "previous": "上一页",
+      "next": "下一页"
+    }
   }
 }

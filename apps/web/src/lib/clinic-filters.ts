@@ -1,30 +1,28 @@
 import type { ClinicSpecialty, MemberLang } from "@/lib/graphql/clinics";
 
-// ClinicsFilterPanel'dagi "Specialty" checkbox yorliqlari → backend enum.
-// Rhinoplasty/Face Contour alohida ClinicSpecialty qiymati emas — ikkalasi
-// ham PLASTIC_SURGERY klinikalarining protsedura nomlari (seed'dagi kabi).
-const SPECIALTY_LABEL_MAP: Record<string, ClinicSpecialty> = {
-	"Plastic Surgery": "PLASTIC_SURGERY",
-	"Rhinoplasty": "PLASTIC_SURGERY",
-	"Face Contour": "PLASTIC_SURGERY",
-	"Dermatology": "DERMATOLOGY",
-	"Dental": "DENTAL",
-	"Hair Transplant": "HAIR_TRANSPLANT",
-};
+// Checkbox state/URL params now carry the backend enum value directly
+// (e.g. "PLASTIC_SURGERY"), not an English label — the label shown to the
+// user comes from the active locale's translation file instead. These
+// functions just validate untrusted URL input against the real enum sets.
+const VALID_SPECIALTIES: readonly ClinicSpecialty[] = [
+	"PLASTIC_SURGERY",
+	"DERMATOLOGY",
+	"DENTAL",
+	"OPHTHALMOLOGY",
+	"HAIR_TRANSPLANT",
+	"ORTHOPEDICS",
+];
 
-// ClinicsFilterPanel'dagi "Language support" checkbox qiymatlari → backend enum
-const LANGUAGE_LABEL_MAP: Record<string, MemberLang> = {
-	Chinese: "ZH",
-	Japanese: "JA",
-	English: "EN",
-};
+const VALID_LANGS: readonly MemberLang[] = ["EN", "ZH", "JA", "KO"];
 
-export function toBackendSpecialties(labels: string[]): ClinicSpecialty[] {
-	const mapped = labels.map((label) => SPECIALTY_LABEL_MAP[label]).filter(Boolean);
-	return [...new Set(mapped)];
+export function toBackendSpecialties(values: string[]): ClinicSpecialty[] {
+	const valid = new Set<string>(VALID_SPECIALTIES);
+	const matched = values.filter((value): value is ClinicSpecialty => valid.has(value));
+	return [...new Set(matched)];
 }
 
-export function toBackendLangs(labels: string[]): MemberLang[] {
-	const mapped = labels.map((label) => LANGUAGE_LABEL_MAP[label]).filter(Boolean);
-	return [...new Set(mapped)];
+export function toBackendLangs(values: string[]): MemberLang[] {
+	const valid = new Set<string>(VALID_LANGS);
+	const matched = values.filter((value): value is MemberLang => valid.has(value));
+	return [...new Set(matched)];
 }

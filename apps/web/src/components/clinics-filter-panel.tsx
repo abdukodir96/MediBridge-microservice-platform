@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 
-const specialtyOptions = [
-  "Plastic Surgery",
-  "Rhinoplasty",
-  "Face Contour",
-  "Dermatology",
-  "Dental",
-  "Hair Transplant",
-];
+// Values are the backend enum — checkbox identity and the GraphQL variable
+// sent to the server. Display text comes from the active locale's
+// "clinics.specialty"/"clinics.lang" translations, not from this list.
+const specialtyValues = [
+  "PLASTIC_SURGERY",
+  "DERMATOLOGY",
+  "DENTAL",
+  "OPHTHALMOLOGY",
+  "HAIR_TRANSPLANT",
+  "ORTHOPEDICS",
+] as const;
 
-const languageOptions = [
-  { value: "Chinese", label: "中文 (Chinese)" },
-  { value: "Japanese", label: "日本語 (Japanese)" },
-  { value: "English", label: "English" },
-];
+const languageValues = ["ZH", "JA", "KO", "EN"] as const;
 
 const locationOptions = ["Gangnam-gu", "Sinsa-dong", "Apgujeong"];
 
@@ -36,6 +36,7 @@ export function ClinicsFilterPanel({
   minPrice,
   maxPrice,
 }: ClinicsFilterPanelProps) {
+  const t = useTranslations("clinics");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [localMinPrice, setLocalMinPrice] = useState(minPrice);
@@ -74,28 +75,28 @@ export function ClinicsFilterPanel({
   return (
     <aside className="shrink-0 border-b border-brand-line bg-white p-6 lg:w-80 lg:border-b-0 lg:border-r lg:p-7 xl:w-[340px]">
       <div className="mb-7 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-brand-ink">Filters</h2>
+        <h2 className="text-xl font-bold text-brand-ink">{t("filters.heading")}</h2>
         <button
           type="button"
           onClick={() => router.push("/clinics")}
           className="text-sm font-semibold text-brand-teal-500 transition hover:text-brand-teal-900 hover:underline"
         >
-          Clear all
+          {t("filters.clearAll")}
         </button>
       </div>
 
-      <FilterGroup title="Specialty">
-        {specialtyOptions.map((option) => (
+      <FilterGroup title={t("filters.specialty")}>
+        {specialtyValues.map((value) => (
           <FilterCheckbox
-            key={option}
-            label={option}
-            checked={specialties.includes(option)}
-            onChange={() => toggleFilter("specialties", specialties, option)}
+            key={value}
+            label={t(`specialty.${value}`)}
+            checked={specialties.includes(value)}
+            onChange={() => toggleFilter("specialties", specialties, value)}
           />
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Location">
+      <FilterGroup title={t("filters.location")}>
         {locationOptions.map((option) => (
           <FilterCheckbox
             key={option}
@@ -106,7 +107,7 @@ export function ClinicsFilterPanel({
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Price range (USD)">
+      <FilterGroup title={`${t("filters.priceRange")} (USD)`}>
         <div className="space-y-5 px-1 pb-1">
           <PriceSlider
             label="Minimum"
@@ -127,13 +128,13 @@ export function ClinicsFilterPanel({
         </div>
       </FilterGroup>
 
-      <FilterGroup title="Language support" last>
-        {languageOptions.map((option) => (
+      <FilterGroup title={t("filters.language")} last>
+        {languageValues.map((value) => (
           <FilterCheckbox
-            key={option.value}
-            label={option.label}
-            checked={languages.includes(option.value)}
-            onChange={() => toggleFilter("languages", languages, option.value)}
+            key={value}
+            label={t(`lang.${value}`)}
+            checked={languages.includes(value)}
+            onChange={() => toggleFilter("languages", languages, value)}
           />
         ))}
       </FilterGroup>
@@ -142,17 +143,18 @@ export function ClinicsFilterPanel({
 }
 
 export function ClinicsSort({ value }: { value: string }) {
+  const t = useTranslations("clinics");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
   const options = [
-    { value: "top-rated", label: "Top rated" },
-    { value: "most-reviewed", label: "Most reviewed" },
-    { value: "price-low", label: "Price: Low to high" },
-    { value: "price-high", label: "Price: High to low" },
+    { value: "top-rated", label: t("sort.TOP_RATED") },
+    { value: "most-reviewed", label: t("sort.MOST_REVIEWED") },
+    { value: "price-low", label: t("sort.PRICE_LOW") },
+    { value: "price-high", label: t("sort.PRICE_HIGH") },
   ];
-  const selectedLabel = options.find((option) => option.value === value)?.label ?? "Top rated";
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? t("sort.TOP_RATED");
 
   useEffect(() => {
     const closeOnOutsideClick = (event: PointerEvent) => {
@@ -181,7 +183,7 @@ export function ClinicsSort({ value }: { value: string }) {
         aria-expanded={open}
         className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-brand-line bg-white px-4 py-2 text-sm font-semibold text-brand-ink shadow-sm transition hover:border-brand-teal-500"
       >
-        <span className="truncate"><span className="text-brand-muted">Sort:</span> {selectedLabel}</span>
+        <span className="truncate"><span className="text-brand-muted">{t("sort.label")}:</span> {selectedLabel}</span>
         <span className={`shrink-0 text-xs text-brand-teal-700 transition-transform duration-[350ms] ${open ? "rotate-180" : "rotate-0"}`}>▼</span>
       </button>
 

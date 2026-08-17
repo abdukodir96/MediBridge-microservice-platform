@@ -1,0 +1,52 @@
+{
+  "landing": {
+    "badge": "✦ 毎年117万人以上の患者様が韓国を信頼しています",
+    "heroTitleStart": "韓国の",
+    "heroTitleEmphasis": "信頼できる",
+    "heroTitleEnd": "クリニックへの架け橋。",
+    "heroSubtitle": "認証済みの美容外科・皮膚科クリニックを比較し、安心して予約し、安全にお支払いいただけます — すべての工程をあなたの言語でサポートします。",
+    "viewAllClinics": "すべてのクリニックを見る"
+  },
+  "clinics": {
+    "title": "クリニックを探す",
+    "subtitle": "施術内容、料金、対応言語でクリニックを検索。",
+    "resultsCount": "{count}件のクリニックが見つかりました",
+    "filters": {
+      "heading": "絞り込み",
+      "clearAll": "すべてクリア",
+      "specialty": "専門分野",
+      "language": "対応言語",
+      "location": "エリア",
+      "priceRange": "価格帯"
+    },
+    "specialty": {
+      "PLASTIC_SURGERY": "美容外科",
+      "DERMATOLOGY": "皮膚科",
+      "DENTAL": "歯科",
+      "OPHTHALMOLOGY": "眼科",
+      "HAIR_TRANSPLANT": "植毛",
+      "ORTHOPEDICS": "整形外科"
+    },
+    "lang": {
+      "EN": "英語",
+      "ZH": "中国語",
+      "JA": "日本語",
+      "KO": "韓国語"
+    },
+    "sort": {
+      "label": "並び替え",
+      "TOP_RATED": "評価が高い順",
+      "MOST_REVIEWED": "レビューが多い順",
+      "PRICE_LOW": "価格が安い順",
+      "PRICE_HIGH": "価格が高い順"
+    },
+    "verified": "認証済み",
+    "fromPrice": "${price}〜",
+    "emptyState": "クリニックが見つかりません",
+    "emptyStateHint": "フィルター条件を変更してみてください。",
+    "pagination": {
+      "previous": "前へ",
+      "next": "次へ"
+    }
+  }
+}

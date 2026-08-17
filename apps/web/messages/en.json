@@ -6,5 +6,47 @@
     "heroTitleEnd": "clinics.",
     "heroSubtitle": "Compare verified plastic surgery & dermatology clinics, book with confidence, and pay safely — every step handled in your language.",
     "viewAllClinics": "View all clinics"
+  },
+  "clinics": {
+    "title": "Find Clinics",
+    "subtitle": "Search verified clinics by treatment, price, and language.",
+    "resultsCount": "{count} clinics found",
+    "filters": {
+      "heading": "Filters",
+      "clearAll": "Clear all",
+      "specialty": "Specialty",
+      "language": "Language",
+      "location": "Location",
+      "priceRange": "Price range"
+    },
+    "specialty": {
+      "PLASTIC_SURGERY": "Plastic Surgery",
+      "DERMATOLOGY": "Dermatology",
+      "DENTAL": "Dental",
+      "OPHTHALMOLOGY": "Ophthalmology",
+      "HAIR_TRANSPLANT": "Hair Transplant",
+      "ORTHOPEDICS": "Orthopedics"
+    },
+    "lang": {
+      "EN": "English",
+      "ZH": "Chinese",
+      "JA": "Japanese",
+      "KO": "Korean"
+    },
+    "sort": {
+      "label": "Sort",
+      "TOP_RATED": "Top rated",
+      "MOST_REVIEWED": "Most reviewed",
+      "PRICE_LOW": "Price: low to high",
+      "PRICE_HIGH": "Price: high to low"
+    },
+    "verified": "Verified",
+    "fromPrice": "from ${price}",
+    "emptyState": "No clinics found",
+    "emptyStateHint": "Try adjusting your filters.",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    }
   }
 }
