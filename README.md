@@ -230,21 +230,46 @@ carried over from `/clinics`.
   component — swapping the router wholesale there would silently 404 the
   dashboard redirects. Needs either two router instances per component or a
   small helper that only prefixes known in-scope paths.
-1. **Clinic/procedure content itself (name, description) is still
-   English-only at the data level** — `next-intl` only translates static UI
-   strings, not database content typed in by a clinic owner. Needs its own
-   decision: live-translate via the AI service (cached) vs. leaving content
-   English and only translating the UI shell around it. Not resolved yet.
-2. **`sitemap.ts`, `robots.ts`, JSON-LD structured data (`LocalBusiness`
+1. **`sitemap.ts`, `robots.ts`, JSON-LD structured data (`LocalBusiness`
    /`MedicalOrganization` schema)** — none of this exists yet. Straightforward
    with the SSR foundation now in place, just not built.
-3. **Deploy phase (domain, VPS/hosting, SSL, swap every test credential for
+2. **Deploy phase (domain, VPS/hosting, SSL, swap every test credential for
    real ones — Cloudinary, hCaptcha, Gemini)** — not started. Blocks and is
-   blocked by (4): search engines can't index what isn't live at a real
+   blocked by (3): search engines can't index what isn't live at a real
    domain.
-4. **Search console registration — Baidu Webmaster Tools, Naver Search
-   Advisor** (plus Google Search Console) — not started, depends on (3)
+3. **Search console registration — Baidu Webmaster Tools, Naver Search
+   Advisor** (plus Google Search Console) — not started, depends on (2)
    being done first.
+
+### Content translation (clinic/procedure names & descriptions)
+
+Static UI strings are translated via message files (above); *content*
+(`clinicName`, `clinicDesc`, `procedureName`, `procedureDesc` — typed in by a
+clinic owner, always in English today) is a separate problem, solved
+separately: `getClinic`/`getClinics`/`getProceduresByClinic` all take an
+optional `locale` argument. English (or no `locale` at all — existing
+callers are unaffected) returns content exactly as authored; any other
+supported locale returns an AI-translated version, cached in a new
+`ContentTranslation` collection (`{ entityType, entityId, locale, fields }`,
+unique per triple) so the AI service is only ever called once per
+entity+locale, not once per page view.
+
+- **Fail-open, and only caches on full success.** If the AI service errors
+  or times out, the field falls back to its original English text for that
+  request — and the result is deliberately **not** cached, so the next
+  request retries instead of a transient outage (confirmed live during
+  testing — Gemini returned a real `503 UNAVAILABLE` "high demand" twice)
+  freezing a clinic in English forever.
+- **Sequential per-entity, not batched.** A `/clinics` listing page
+  translates each clinic's name one request at a time; the first visitor to
+  hit an untranslated locale for a given page pays for that (a few seconds,
+  confirmed live: ~2-5s cold vs. ~0.1s once cached). Acceptable for a demo;
+  a production version would add a `/translate-batch` endpoint to the AI
+  service (one Gemini call for N strings) or a pre-warm script that
+  populates the cache for all clinics/locales ahead of time.
+- **Source language is hardcoded to English** — there's no clinic-facing
+  UI for entering content in another language, so there's nothing to
+  detect.
 
 ### Deliberately not built
 

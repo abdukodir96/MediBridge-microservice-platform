@@ -24,9 +24,16 @@ function formatPriceRange(procedure: ClinicProcedure) {
 		: `${procedurePriceMin.toLocaleString()}–${procedurePriceMax.toLocaleString()} ${procedureCurrency}`;
 }
 
-export default async function ClinicProfilePage({ params }: { params: Promise<{ id: string }> }) {
-	const { id } = await params;
-	const [profile, t] = await Promise.all([fetchClinicProfile(id), getTranslations("clinicProfile")]);
+export default async function ClinicProfilePage({
+	params,
+}: {
+	params: Promise<{ id: string; locale: string }>;
+}) {
+	const { id, locale } = await params;
+	const [profile, t] = await Promise.all([
+		fetchClinicProfile(id, locale),
+		getTranslations("clinicProfile"),
+	]);
 	if (!profile) notFound();
 
 	const { clinic, procedures } = profile;

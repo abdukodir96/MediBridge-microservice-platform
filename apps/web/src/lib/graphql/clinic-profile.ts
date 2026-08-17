@@ -23,8 +23,8 @@ export interface ClinicProcedure {
 }
 
 const GET_CLINIC_PROFILE_QUERY = `
-	query GetClinicProfile($clinicId: String!) {
-		getClinic(clinicId: $clinicId) {
+	query GetClinicProfile($clinicId: String!, $locale: String) {
+		getClinic(clinicId: $clinicId, locale: $locale) {
 			clinicName
 			clinicDesc
 			clinicAddress
@@ -34,7 +34,7 @@ const GET_CLINIC_PROFILE_QUERY = `
 			clinicRating
 			clinicReviewCount
 		}
-		getProceduresByClinic(clinicId: $clinicId) {
+		getProceduresByClinic(clinicId: $clinicId, locale: $locale) {
 			total
 			list {
 				_id
@@ -59,11 +59,12 @@ const GET_CLINIC_PROFILE_QUERY = `
 // to call notFound() in the page.
 export async function fetchClinicProfile(
 	clinicId: string,
+	locale?: string,
 ): Promise<{ clinic: ClinicProfile; procedures: ClinicProcedure[] } | null> {
 	const res = await fetch(process.env.NEXT_PUBLIC_GATEWAY_URL as string, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ query: GET_CLINIC_PROFILE_QUERY, variables: { clinicId } }),
+		body: JSON.stringify({ query: GET_CLINIC_PROFILE_QUERY, variables: { clinicId, locale } }),
 		cache: "no-store",
 	});
 

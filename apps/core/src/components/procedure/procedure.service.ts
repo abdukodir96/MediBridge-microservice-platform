@@ -14,6 +14,7 @@ import {
 import { Clinic } from '../../libs/dto/clinic/clinic';
 import { ClinicStatus } from '../../libs/enums/clinic.enum';
 import { ProcedureSort } from '../../libs/enums/procedure.enum';
+import { TranslationService } from '../translation/translation.service';
 
 const SORT_MAP: Record<ProcedureSort, Record<string, 1 | -1>> = {
 	[ProcedureSort.PRICE_LOW]: { procedurePriceMin: 1 },
@@ -45,6 +46,7 @@ export class ProcedureService {
 	constructor(
 		@InjectModel('Procedure') private readonly procedureModel: Model<Procedure>,
 		@InjectModel('Clinic') private readonly clinicModel: Model<Clinic>,
+		private readonly translationService: TranslationService,
 	) {}
 
 	// CLINIC role — adds a procedure to its own clinic
@@ -101,8 +103,10 @@ export class ProcedureService {
 	}
 
 	// Anyone — lists procedures of a given clinic (VERIFIED clinics only,
-	// same visibility rule as getClinic/getClinics)
-	public async getProceduresByClinic(clinicId: ObjectId): Promise<Procedures> {
+	// same visibility rule as getClinic/getClinics). `locale`: optional,
+	// additive — translates procedureName + procedureDesc per procedure,
+	// same cache/fail-open behavior as ClinicService.getClinic.
+	public async getProceduresByClinic(clinicId: ObjectId, locale?: string): Promise<Procedures> {
 		assertValidObjectId(clinicId);
 		const clinic = await this.clinicModel
 			.findOne({ _id: clinicId, clinicStatus: ClinicStatus.VERIFIED })
@@ -116,6 +120,22 @@ export class ProcedureService {
 				.exec(),
 			this.procedureModel.countDocuments({ procedureClinicId: clinicId }),
 		]);
+
+		if (locale) {
+			for (const procedure of list) {
+				const translated = await this.translationService.translateFields(
+					'PROCEDURE',
+					String(procedure._id),
+					locale,
+					{
+						procedureName: procedure.procedureName,
+						procedureDesc: procedure.procedureDesc,
+					},
+				);
+				procedure.procedureName = translated.procedureName;
+				procedure.procedureDesc = translated.procedureDesc;
+			}
+		}
 
 		return { list, total };
 	}

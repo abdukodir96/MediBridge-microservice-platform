@@ -5,6 +5,7 @@ import { ProcedureService } from './procedure.service';
 import ProcedureSchema from '../../libs/schema/procedure.model';
 import ClinicSchema from '../../libs/schema/clinic.model';
 import { AuthModule } from '../auth/auth.module';
+import { TranslationModule } from '../translation/translation.module';
 
 @Module({
 	imports: [
@@ -13,6 +14,7 @@ import { AuthModule } from '../auth/auth.module';
 			{ name: 'Clinic', schema: ClinicSchema }, // needed for ownership checks
 		]),
 		AuthModule, // RolesGuard depends on AuthService
+		TranslationModule, // for locale-aware getProceduresByClinic
 	],
 	providers: [ProcedureResolver, ProcedureService],
 	exports: [ProcedureService],

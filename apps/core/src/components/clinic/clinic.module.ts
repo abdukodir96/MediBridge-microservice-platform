@@ -6,6 +6,7 @@ import ClinicSchema from '../../libs/schema/clinic.model';
 import ProcedureSchema from '../../libs/schema/procedure.model';
 import { AuthModule } from '../auth/auth.module';
 import { MemberModule } from '../member/member.module';
+import { TranslationModule } from '../translation/translation.module';
 
 @Module({
 	imports: [
@@ -16,6 +17,7 @@ import { MemberModule } from '../member/member.module';
 		]),
 		AuthModule, // RolesGuard depends on AuthService
 		MemberModule, // for the Clinic type's owner field resolver
+		TranslationModule, // for locale-aware getClinic/getClinics
 	],
 	providers: [ClinicResolver, ClinicService],
 	exports: [ClinicService],

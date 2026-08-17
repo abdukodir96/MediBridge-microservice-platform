@@ -29,6 +29,7 @@ TargetLang = Literal["EN", "ZH", "JA", "KO"]
 class TranslateRequest(BaseModel):
     text: str
     targetLang: TargetLang
+    sourceLang: TargetLang | None = None
 
 
 class TranslateResponse(BaseModel):
@@ -54,8 +55,9 @@ def translate(req: TranslateRequest):
         raise HTTPException(status_code=400, detail="text must not be empty")
 
     target_name = LANG_NAMES[req.targetLang]
+    source_clause = f" from {LANG_NAMES[req.sourceLang]}" if req.sourceLang else ""
     prompt = (
-        f"Translate the following chat message into {target_name}. "
+        f"Translate the following text{source_clause} into {target_name}. "
         "Reply with ONLY the translated text — no explanation, no quotes, "
         "no language name.\n\n"
         f"{text}"

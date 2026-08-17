@@ -31,11 +31,17 @@ function clampPrice(value: string | null, fallback: number) {
 }
 
 export default async function ClinicsPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  const [params, t] = await Promise.all([searchParams, getTranslations("clinics")]);
+  const [{ locale }, params, t] = await Promise.all([
+    routeParams,
+    searchParams,
+    getTranslations("clinics"),
+  ]);
 
   const selectedSpecialties = parseList(firstParam(params.specialties) ?? firstParam(params.treatment));
   const selectedLocations = parseList(firstParam(params.locations) ?? firstParam(params.city));
@@ -55,16 +61,19 @@ export default async function ClinicsPage({
     list: clinics,
     total,
     error,
-  } = await fetchClinics({
-    specialties: backendSpecialties.length ? backendSpecialties : undefined,
-    langs: backendLangs.length ? backendLangs : undefined,
-    locations: selectedLocations.length ? selectedLocations : undefined,
-    priceMin: minPrice > 0 ? minPrice : undefined,
-    priceMax: maxPrice < 8000 ? maxPrice : undefined,
-    sort: toBackendSort(uiSort),
-    page: requestedPage,
-    limit: CLINICS_PER_PAGE,
-  });
+  } = await fetchClinics(
+    {
+      specialties: backendSpecialties.length ? backendSpecialties : undefined,
+      langs: backendLangs.length ? backendLangs : undefined,
+      locations: selectedLocations.length ? selectedLocations : undefined,
+      priceMin: minPrice > 0 ? minPrice : undefined,
+      priceMax: maxPrice < 8000 ? maxPrice : undefined,
+      sort: toBackendSort(uiSort),
+      page: requestedPage,
+      limit: CLINICS_PER_PAGE,
+    },
+    locale,
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / CLINICS_PER_PAGE));
   const currentPage = Math.min(requestedPage, totalPages);

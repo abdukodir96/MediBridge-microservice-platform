@@ -35,22 +35,25 @@ export class ClinicResolver {
 		return await this.clinicService.createClinic(ownerId, input);
 	}
 
-	// Anyone — searches clinics (public)
+	// Anyone — searches clinics (public). `locale`: optional, additive —
+	// see ClinicService.getClinics for what it does.
 	@Query(() => Clinics)
 	public async getClinics(
 		@Args('input') input: ClinicsInquiry,
+		@Args('locale', { nullable: true }) locale?: string,
 	): Promise<Clinics> {
 		console.log('Query: getClinics');
-		return await this.clinicService.getClinics(input);
+		return await this.clinicService.getClinics(input, locale);
 	}
 
 	// Anyone — views a single clinic (public)
 	@Query(() => Clinic)
 	public async getClinic(
 		@Args('clinicId') clinicId: string,
+		@Args('locale', { nullable: true }) locale?: string,
 	): Promise<Clinic> {
 		console.log('Query: getClinic');
-		return await this.clinicService.getClinic(clinicId as unknown as ObjectId);
+		return await this.clinicService.getClinic(clinicId as unknown as ObjectId, locale);
 	}
 
 	// CLINIC role — which clinic is "mine" (via token, no args)

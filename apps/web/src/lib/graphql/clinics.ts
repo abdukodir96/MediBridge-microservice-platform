@@ -75,8 +75,8 @@ export const GET_CLINICS: TypedDocumentNode<GetClinicsData, GetClinicsVars> = gq
 `;
 
 const GET_CLINICS_QUERY = `
-	query GetClinics($input: ClinicsInquiry!) {
-		getClinics(input: $input) {
+	query GetClinics($input: ClinicsInquiry!, $locale: String) {
+		getClinics(input: $input, locale: $locale) {
 			total
 			list {
 				_id
@@ -98,13 +98,19 @@ const GET_CLINICS_QUERY = `
 // Clinics section) — same query as GET_CLINICS above, but run via a plain
 // fetch instead of Apollo's browser-oriented client. Mirrors the pattern in
 // lib/graphql/clinic-profile.ts.
+//
+// `locale`: omitted or 'en' returns clinicName/clinicDesc exactly as
+// authored; any other supported locale asks Core to swap in an AI-translated
+// (and cached) version instead — see apps/core's TranslationService. The
+// GraphQL shape here never changes, only the string values.
 export async function fetchClinics(
 	input: ClinicsInquiry,
+	locale?: string,
 ): Promise<{ list: Clinic[]; total: number; error?: string }> {
 	const res = await fetch(process.env.NEXT_PUBLIC_GATEWAY_URL as string, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ query: GET_CLINICS_QUERY, variables: { input } }),
+		body: JSON.stringify({ query: GET_CLINICS_QUERY, variables: { input, locale } }),
 		cache: 'no-store',
 	});
 

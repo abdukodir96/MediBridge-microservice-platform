@@ -14,6 +14,7 @@ import {
 	ClinicsAdminInquiry,
 } from '../../libs/dto/clinic/clinic.input';
 import { ClinicStatus, ClinicSort } from '../../libs/enums/clinic.enum';
+import { TranslationService } from '../translation/translation.service';
 
 // Escapes regex special characters so user search input is matched literally,
 // not interpreted as a regex pattern (prevents ReDoS / regex injection)
@@ -50,6 +51,7 @@ export class ClinicService {
 	constructor(
 		@InjectModel('Clinic') private readonly clinicModel: Model<Clinic>,
 		@InjectModel('Procedure') private readonly procedureModel: Model<Procedure>,
+		private readonly translationService: TranslationService,
 	) {}
 
 	// CLINIC role — creates a new clinic (starts in PENDING)
@@ -78,13 +80,30 @@ export class ClinicService {
 		}
 	}
 
-	// Patient — views a single clinic (VERIFIED only)
-	public async getClinic(clinicId: ObjectId): Promise<Clinic> {
+	// Patient — views a single clinic (VERIFIED only). `locale` is optional
+	// and additive: omitted or 'en' returns the clinic exactly as authored;
+	// any other supported locale swaps clinicName/clinicDesc for a cached
+	// (or freshly AI-translated) version — see TranslationService for the
+	// fail-open/caching behavior. The GraphQL shape never changes, only the
+	// string values do.
+	public async getClinic(clinicId: ObjectId, locale?: string): Promise<Clinic> {
 		assertValidObjectId(clinicId);
 		const clinic = await this.clinicModel
 			.findOne({ _id: clinicId, clinicStatus: ClinicStatus.VERIFIED })
 			.exec();
 		if (!clinic) throw new NotFoundException('Clinic not found');
+
+		if (locale) {
+			const translated = await this.translationService.translateFields(
+				'CLINIC',
+				String(clinic._id),
+				locale,
+				{ clinicName: clinic.clinicName, clinicDesc: clinic.clinicDesc },
+			);
+			clinic.clinicName = translated.clinicName;
+			clinic.clinicDesc = translated.clinicDesc;
+		}
+
 		return clinic;
 	}
 
@@ -108,7 +127,7 @@ export class ClinicService {
 	// Price filter/sort reach across into Procedure via $lookup, since price
 	// lives on Procedure, not Clinic — a clinic matches the price window if at
 	// least one of its procedures overlaps [priceMin, priceMax].
-	public async getClinics(input: ClinicsInquiry): Promise<Clinics> {
+	public async getClinics(input: ClinicsInquiry, locale?: string): Promise<Clinics> {
 		const {
 			specialties,
 			langs,
@@ -187,6 +206,21 @@ export class ClinicService {
 				.exec(),
 			this.clinicModel.aggregate([...pipeline, { $count: 'total' }]).exec(),
 		]);
+
+		// Only clinicName is shown on a list card (no description) — translate
+		// just that one field per clinic. Sequential, not batched: fine for a
+		// page of 6-10 clinics; see README for the batch-endpoint follow-up.
+		if (locale) {
+			for (const clinic of list) {
+				const translated = await this.translationService.translateFields(
+					'CLINIC',
+					String(clinic._id),
+					locale,
+					{ clinicName: clinic.clinicName },
+				);
+				clinic.clinicName = translated.clinicName;
+			}
+		}
 
 		return { list, total: countResult[0]?.total ?? 0 };
 	}

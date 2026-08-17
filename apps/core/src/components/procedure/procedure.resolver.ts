@@ -54,10 +54,12 @@ export class ProcedureResolver {
 	@Query(() => Procedures)
 	public async getProceduresByClinic(
 		@Args('clinicId') clinicId: string,
+		@Args('locale', { nullable: true }) locale?: string,
 	): Promise<Procedures> {
 		console.log('Query: getProceduresByClinic');
 		return await this.procedureService.getProceduresByClinic(
 			clinicId as unknown as ObjectId,
+			locale,
 		);
 	}
 
