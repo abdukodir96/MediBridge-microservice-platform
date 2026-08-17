@@ -48,5 +48,87 @@
       "previous": "Previous",
       "next": "Next"
     }
+  },
+  "auth": {
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "login": {
+      "title": "Log in to MediBridge",
+      "submit": "Log in",
+      "noAccount": "Don't have an account?",
+      "signUpLink": "Sign up"
+    },
+    "signup": {
+      "title": "Create your account",
+      "submit": "Create account",
+      "haveAccount": "Already have an account?",
+      "logInLink": "Log in",
+      "roleLabel": "I am a",
+      "rolePatient": "Patient",
+      "roleClinic": "Clinic",
+      "fullNameLabel": "Full name",
+      "nickLabel": "Display name",
+      "phoneLabel": "Phone number",
+      "countryLabel": "Country",
+      "languageLabel": "Preferred language"
+    }
+  },
+  "clinicProfile": {
+    "verified": "Verified by MediBridge",
+    "reviewsCount": "{count} reviews",
+    "aboutTitle": "About the clinic",
+    "proceduresTitle": "Procedures & pricing",
+    "reviewsTitle": "Patient reviews",
+    "recoveryDays": "{days} days recovery",
+    "fromPrice": "from ${min}–{max}",
+    "bookingCard": {
+      "startingFrom": "Starting from",
+      "procedureLabel": "Procedure",
+      "dateLabel": "Preferred date",
+      "requestButton": "Request booking",
+      "chatButton": "Chat with clinic first",
+      "escrowNote": "Protected by escrow · pay after treatment"
+    }
+  },
+  "booking": {
+    "steps": {
+      "details": "Details",
+      "medicalInfo": "Medical info",
+      "review": "Review & Submit"
+    },
+    "details": {
+      "title": "Booking details",
+      "subtitle": "Confirm the procedure and let the clinic know when you'd like to visit.",
+      "procedureLabel": "Selected procedure",
+      "dateLabel": "Date",
+      "flexibilityLabel": "Flexibility",
+      "noteLabel": "Note to clinic (optional)",
+      "notePlaceholder": "e.g. arriving on Aug 10, prefer a female coordinator...",
+      "continueButton": "Continue to medical info"
+    },
+    "medicalInfo": {
+      "title": "Your medical information",
+      "subtitle": "Shared securely with the clinic only.",
+      "patientDetailsTitle": "Patient details",
+      "fullNameLabel": "Full name",
+      "countryLabel": "Country",
+      "languageLabel": "Preferred language",
+      "allergiesLabel": "Any allergies or conditions?",
+      "allergiesPlaceholder": "e.g. penicillin allergy, none...",
+      "documentsLabel": "Upload documents (optional)",
+      "continueButton": "Continue to review"
+    },
+    "review": {
+      "title": "Review your request",
+      "subtitle": "Double-check everything below. Once submitted, the clinic will review and confirm.",
+      "clinicSectionTitle": "Clinic & procedure",
+      "patientSectionTitle": "Patient details",
+      "medicalSectionTitle": "Medical information",
+      "editLink": "Edit",
+      "noPaymentTitle": "No payment needed yet",
+      "noPaymentText": "The clinic will confirm the exact price. Payment happens after confirmation, protected by escrow.",
+      "submitButton": "Submit booking request"
+    },
+    "success": "Your booking request was submitted. The clinic will review it and confirm shortly."
   }
 }

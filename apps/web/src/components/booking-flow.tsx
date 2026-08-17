@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, DragEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,7 +9,6 @@ import Swal from "sweetalert2";
 import { useMutation } from "@apollo/client/react";
 import { CREATE_BOOKING } from "@/lib/graphql/bookings";
 
-const steps = ["Details", "Medical info", "Review & Submit"];
 const countries = ["Uzbekistan", "South Korea", "China", "Japan", "United States", "Other"];
 const languages = ["English", "中文 (Chinese)", "日本語 (Japanese)", "한국어 (Korean)", "O‘zbek tili"];
 const flexibilityOptions = ["Exact date only", "± 3 days is fine", "± 1 week is fine", "My dates are flexible"];
@@ -47,6 +47,7 @@ const initialForm: FormState = {
 };
 
 export function BookingFlow() {
+  const t = useTranslations("booking");
   const router = useRouter();
   const searchParams = useSearchParams();
   const clinicId = searchParams.get("clinic") || "";
@@ -220,9 +221,9 @@ export function BookingFlow() {
           )}
 
           {step === 1 && (
-            <StepSection title="Booking details" subtitle="Confirm the procedure and let the clinic know when you'd like to visit.">
+            <StepSection title={t("details.title")} subtitle={t("details.subtitle")}>
               <FormCard title="🩺 Procedure">
-                <BookingField label="Selected procedure">
+                <BookingField label={t("details.procedureLabel")}>
                   <div className={`${inputClass} flex items-center justify-between gap-4`}>
                     <span className={procedureName ? "font-medium" : "text-brand-muted/70"}>{procedureName || "Select a procedure"}</span>
                   </div>
@@ -231,8 +232,8 @@ export function BookingFlow() {
               </FormCard>
               <FormCard title="📅 Preferred date">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <BookingDatePicker value={preferredDate} onChange={setPreferredDate} />
-                  <BookingFlexibilityPicker value={form.flexibility} onChange={(value) => updateForm("flexibility", value)} />
+                  <BookingDatePicker label={t("details.dateLabel")} value={preferredDate} onChange={setPreferredDate} />
+                  <BookingFlexibilityPicker label={t("details.flexibilityLabel")} value={form.flexibility} onChange={(value) => updateForm("flexibility", value)} />
                 </div>
 
                 <div className="mt-6 border-t border-brand-line pt-6">
@@ -249,8 +250,8 @@ export function BookingFlow() {
                 </div>
 
                 <div className="mt-6 border-t border-brand-line pt-6">
-                  <BookingField label="Note to clinic (optional)">
-                    <textarea value={form.clinicNote} onChange={(event) => updateForm("clinicNote", event.target.value)} placeholder="e.g. I would prefer a female coordinator, arriving from Shanghai on Aug 10..." rows={3} className={`${inputClass} resize-none`} />
+                  <BookingField label={t("details.noteLabel")}>
+                    <textarea value={form.clinicNote} onChange={(event) => updateForm("clinicNote", event.target.value)} placeholder={t("details.notePlaceholder")} rows={3} className={`${inputClass} resize-none`} />
                   </BookingField>
                 </div>
               </FormCard>
@@ -258,19 +259,19 @@ export function BookingFlow() {
           )}
 
           {step === 2 && (
-            <StepSection title="Your medical information" subtitle="Shared securely with the clinic only. Encrypted and never public.">
-              <FormCard title="👤 Patient details">
+            <StepSection title={t("medicalInfo.title")} subtitle={t("medicalInfo.subtitle")}>
+              <FormCard title={`👤 ${t("medicalInfo.patientDetailsTitle")}`}>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <BookingField label="Full name"><input value={form.fullName} onChange={(event) => updateForm("fullName", event.target.value)} placeholder="Your legal name" className={inputClass} /></BookingField>
+                  <BookingField label={t("medicalInfo.fullNameLabel")}><input value={form.fullName} onChange={(event) => updateForm("fullName", event.target.value)} placeholder="Your legal name" className={inputClass} /></BookingField>
                   <BookingDatePicker label="Date of birth" value={form.birthDate} onChange={(value) => updateForm("birthDate", value)} defaultMonth={new Date(1994, 2, 1)} />
-                  <BookingSelectPicker label="Country" value={form.country} options={countries} placeholder="Select country" onChange={(value) => updateForm("country", value)} />
-                  <BookingSelectPicker label="Preferred language" value={form.language} options={languages} placeholder="Select language" onChange={(value) => updateForm("language", value)} />
+                  <BookingSelectPicker label={t("medicalInfo.countryLabel")} value={form.country} options={countries} placeholder="Select country" onChange={(value) => updateForm("country", value)} />
+                  <BookingSelectPicker label={t("medicalInfo.languageLabel")} value={form.language} options={languages} placeholder="Select language" onChange={(value) => updateForm("language", value)} />
                 </div>
               </FormCard>
 
               <FormCard title="🩺 Medical history & documents">
-                <BookingField label="Any allergies or conditions?"><textarea value={form.allergies} onChange={(event) => updateForm("allergies", event.target.value)} placeholder="e.g. penicillin allergy, none..." rows={3} className={`${inputClass} resize-y`} /></BookingField>
-                <div className="mt-4"><BookingField label="Upload documents (optional)">
+                <BookingField label={t("medicalInfo.allergiesLabel")}><textarea value={form.allergies} onChange={(event) => updateForm("allergies", event.target.value)} placeholder={t("medicalInfo.allergiesPlaceholder")} rows={3} className={`${inputClass} resize-y`} /></BookingField>
+                <div className="mt-4"><BookingField label={t("medicalInfo.documentsLabel")}>
                   <label onDragOver={(event) => event.preventDefault()} onDrop={handleDrop} className="flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-brand-line px-5 py-8 text-center text-sm text-brand-muted transition hover:border-brand-teal-500 hover:bg-brand-cream/60">
                     <span className="text-3xl">📄</span><span className="mt-2 font-semibold">Drop lab reports or previous records here</span><small className="mt-1">PDF, JPG · max 10MB</small>
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(event: ChangeEvent<HTMLInputElement>) => void selectDocument(event.target.files?.[0])} />
@@ -282,15 +283,15 @@ export function BookingFlow() {
           )}
 
           {step === 3 && (
-            <StepSection title="Review your request" subtitle="Double-check everything below before sending it to the clinic.">
+            <StepSection title={t("review.title")} subtitle={t("review.subtitle")}>
               <div className="grid gap-5 lg:grid-cols-2">
-                <ReviewCard title="Clinic & procedure" onEdit={() => setStep(1)}>
+                <ReviewCard title={t("review.clinicSectionTitle")} onEdit={() => setStep(1)}>
                   <ReviewItem label="Clinic" value={clinicName} />
                   <ReviewItem label="Procedure" value={procedureName} />
                   <ReviewItem label="Preferred date" value={formatDate(preferredDate)} />
                   <ReviewItem label="Flexibility" value={form.flexibility} />
                 </ReviewCard>
-                <ReviewCard title="Patient details" onEdit={() => setStep(2)}>
+                <ReviewCard title={t("review.patientSectionTitle")} onEdit={() => setStep(2)}>
                   <ReviewItem label="Full name" value={form.fullName} />
                   <ReviewItem label="Country" value={form.country === "China" ? "🇨🇳 China" : form.country} />
                   <ReviewItem label="Language" value={form.language} />
@@ -299,7 +300,7 @@ export function BookingFlow() {
               </div>
 
               <div className="mt-5">
-                <ReviewCard title="Medical information" onEdit={() => setStep(2)}>
+                <ReviewCard title={t("review.medicalSectionTitle")} onEdit={() => setStep(2)}>
                   <ReviewItem label="Allergies / conditions" value={form.allergies || "None reported"} />
                   <ReviewItem label="Documents" value={documentName ? <span className="inline-flex rounded-full bg-brand-teal-100 px-3 py-1.5 text-xs font-semibold text-brand-teal-700">📎 {documentName}</span> : "No documents uploaded"} />
                   <ReviewItem label="Note to clinic" value={form.clinicNote ? "“" + form.clinicNote + "”" : "No note provided"} />
@@ -309,8 +310,8 @@ export function BookingFlow() {
               <div className="mt-5 flex gap-4 rounded-2xl border border-brand-line bg-brand-cream p-6 text-sm leading-6 text-brand-muted">
                 <span className="text-xl">ℹ️</span>
                 <div>
-                  <h3 className="font-bold text-brand-teal-900">Sent directly to the clinic</h3>
-                  <p className="mt-1">The clinic will review your request and confirm availability. You&apos;ll pay securely — held in escrow — only after they confirm.</p>
+                  <h3 className="font-bold text-brand-teal-900">{t("review.noPaymentTitle")}</h3>
+                  <p className="mt-1">{t("review.noPaymentText")}</p>
                 </div>
               </div>
 
@@ -326,7 +327,7 @@ export function BookingFlow() {
                 disabled={submitting}
                 className="mt-6 flex min-h-15 w-full items-center justify-center rounded-xl bg-brand-teal-700 px-6 text-base font-bold text-white transition hover:bg-brand-teal-900 disabled:opacity-60"
               >
-                {submitting ? "Sending request…" : "Submit booking request →"}
+                {submitting ? "Sending request…" : `${t("review.submitButton")} →`}
               </button>
             </StepSection>
           )}
@@ -340,6 +341,8 @@ export function BookingFlow() {
 }
 
 function BookingStepper({ currentStep, onStepClick }: { currentStep: number; onStepClick: (step: number) => void }) {
+  const t = useTranslations("booking.steps");
+  const steps = [t("details"), t("medicalInfo"), t("review")];
   return (
     <nav className="border-b border-brand-line bg-brand-cream px-4 py-8" aria-label="Booking progress">
       <div className="mx-auto flex max-w-5xl items-center justify-center">
@@ -368,7 +371,8 @@ function StepSection({ title, subtitle, children }: { title: string; subtitle: s
 function FormCard({ title, children }: { title: string; children: ReactNode }) { return <section className="mb-6 rounded-2xl border border-brand-line bg-white p-6 sm:p-8"><h2 className="mb-6 text-base font-bold text-brand-ink">{title}</h2>{children}</section>; }
 function BookingField({ label, children }: { label: string; children: ReactNode }) { return <label className="block"><span className="mb-2 block text-xs font-semibold text-brand-muted">{label}</span>{children}</label>; }
 function ReviewCard({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
-  return <section className="rounded-2xl border border-brand-line bg-white p-6"><div className="mb-3 flex items-center justify-between"><h2 className="text-xs font-bold uppercase tracking-[0.08em] text-brand-muted">{title}</h2><button type="button" onClick={onEdit} className="text-xs font-bold text-brand-teal-700 hover:underline">Edit</button></div><div>{children}</div></section>;
+  const t = useTranslations("booking.review");
+  return <section className="rounded-2xl border border-brand-line bg-white p-6"><div className="mb-3 flex items-center justify-between"><h2 className="text-xs font-bold uppercase tracking-[0.08em] text-brand-muted">{title}</h2><button type="button" onClick={onEdit} className="text-xs font-bold text-brand-teal-700 hover:underline">{t("editLink")}</button></div><div>{children}</div></section>;
 }
 function ReviewItem({ label, value }: { label: string; value: ReactNode }) {
   return <div className="flex flex-col gap-2 border-b border-brand-line py-3 first:pt-0 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"><span className="text-sm text-brand-muted">{label}</span><div className="max-w-[70%] text-sm font-semibold text-brand-ink sm:text-right">{value}</div></div>;
@@ -426,8 +430,8 @@ function BookingDatePicker({ label = "Date", value, onChange, defaultMonth }: { 
   );
 }
 
-function BookingFlexibilityPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return <BookingSelectPicker label="Flexibility" value={value} options={flexibilityOptions} placeholder="Select flexibility" onChange={onChange} />;
+function BookingFlexibilityPicker({ label = "Flexibility", value, onChange }: { label?: string; value: string; onChange: (value: string) => void }) {
+  return <BookingSelectPicker label={label} value={value} options={flexibilityOptions} placeholder="Select flexibility" onChange={onChange} />;
 }
 
 function BookingSelectPicker({ label, value, options, placeholder, onChange }: { label: string; value: string; options: string[]; placeholder: string; onChange: (value: string) => void }) {
@@ -462,7 +466,8 @@ function BookingSelectPicker({ label, value, options, placeholder, onChange }: {
 }
 
 function BookingSummary({ clinicSlug, clinicName, procedure, preferredDate, step, onContinue }: { clinicSlug: string; clinicName: string; procedure: string; preferredDate: string; step: number; onContinue: () => void }) {
-  const buttonLabel = step === 1 ? "Continue to medical info →" : "Continue to review & submit →";
+  const t = useTranslations("booking");
+  const buttonLabel = step === 1 ? `${t("details.continueButton")} →` : `${t("medicalInfo.continueButton")} →`;
   return (
     <aside className="order-first lg:order-none">
       <div className="sticky top-6 flex min-h-[620px] flex-col overflow-hidden rounded-2xl border border-brand-line bg-white shadow-2xl shadow-brand-teal-900/10">

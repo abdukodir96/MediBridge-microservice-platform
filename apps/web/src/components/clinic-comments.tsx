@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { FormEvent, useMemo, useState, useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 
@@ -33,6 +34,7 @@ type ReplyTarget = {
 };
 
 export function ClinicComments({ clinicSlug, clinicName }: { clinicSlug: string; clinicName: string }) {
+  const t = useTranslations("clinicProfile");
   const router = useRouter();
   const initialComments = useMemo(() => createInitialComments(clinicName), [clinicName]);
   const store = useMemo(
@@ -140,7 +142,7 @@ export function ClinicComments({ clinicSlug, clinicName }: { clinicSlug: string;
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-teal-500">Patient experiences</p>
-          <h2 className="mt-2 font-serif text-3xl font-semibold text-brand-teal-900">Patient comments</h2>
+          <h2 className="mt-2 font-serif text-3xl font-semibold text-brand-teal-900">{t("reviewsTitle")}</h2>
         </div>
         <strong className="text-lg text-brand-teal-700">{totalComments} comments</strong>
       </div>

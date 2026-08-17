@@ -103,6 +103,41 @@ Gemini. Two deliberate design choices:
   stored per-admin, since an `ADMIN_CLINIC` room is a shared inbox any
   admin can post in — there's no single admin to freeze a language for.
 
+## SEO / Internationalization
+
+The public route tree (`app/[locale]/...`) is served in 4 languages —
+English, Chinese, Korean, Japanese — via `next-intl`, chosen deliberately in
+that priority order: Google doesn't operate in China, so Chinese is the one
+market standard SEO can't reach at all; Korean matters for local (Naver)
+search; Japanese is lower priority since Google already indexes English
+content reasonably well there.
+
+- **`localePrefix: "as-needed"`** — the default locale (English) gets no URL
+  prefix (`/clinics`, not `/en/clinics`), so every hardcoded `href="/clinics"`
+  already in the codebase keeps working unchanged. Only non-default locales
+  need a prefix (`/zh/clinics`). `/en/...` itself 307-redirects to the
+  unprefixed path to avoid duplicate-content SEO issues.
+- **`/clinics` is server-rendered**, not client-fetched — this was the
+  highest-priority fix, since Baidu (the search engine that actually matters
+  for the Chinese market) doesn't reliably execute JavaScript the way Google
+  does. A client-rendered page is effectively invisible to it. Verified via
+  plain `curl` (no JS) returning real clinic names in the HTML.
+- **Root layout stays singular** — `app/layout.tsx` (fonts, Apollo
+  `Providers`, global CSS) was deliberately *not* duplicated into a second
+  "root layout" under `[locale]/`. It reads the locale itself via
+  `getLocale()`/`getMessages()` (`next-intl/server`), which resolves to the
+  default locale automatically for every route outside `[locale]`
+  (dashboard, admin — English-only, unprefixed, unaffected).
+- Internal links/pagination on translated pages use `@/i18n/navigation`'s
+  `Link`/`useRouter` (not `next/navigation`'s) — the locale prefix is added
+  automatically, so page code never manually threads a locale through a URL.
+- Checkbox/filter state (specialty, language) is keyed on the backend enum
+  value (e.g. `PLASTIC_SURGERY`), never on the displayed label — the label
+  is resolved per-locale from `messages/*.json`. This was a deliberate fix:
+  the original filter UI used the English label itself as the filter's
+  identity, which would have silently broken filtering on every non-English
+  page.
+
 ## Known limitations / tech debt
 
 ### Backend
@@ -162,6 +197,54 @@ Gemini. Two deliberate design choices:
 - **Clinic-initiated chat isn't supported** — a clinic can reply inside an
   existing room but can't start a new conversation with a patient; only the
   patient (or an admin) can open the first message.
+
+### SEO / Internationalization — next concrete steps
+
+`/clinics/[id]`, `/login`, `/signup`, and `/booking/new` are now translated
+(EN/ZH/KO/JA) alongside Landing and `/clinics`, using the same `useTranslations`
+/`getTranslations` pattern. Checkbox/filter identity vs. display-label
+separation, and cross-page navigation via `@/i18n/navigation` (not
+`next/navigation`) so the locale prefix survives client-side pushes, both
+carried over from `/clinics`.
+
+- **Not every string in these three pages has a translation yet** — only
+  the keys the translation files actually define were wired (e.g. auth's
+  "Remember me"/"Forgot password?", booking's "Date of birth" label, and
+  several `auth.signup.*` keys with no corresponding form field —
+  `fullNameLabel`, `countryLabel`, `languageLabel` — stay English). Expected
+  and deliberate: translating what exists, not inventing new form fields or
+  copy to fill out an in-progress message catalog.
+- **`booking.success`** (the "your request was submitted" banner) has a
+  translation key but is never wired — it lives in `dashboard-screen.tsx`,
+  which is deliberately outside `[locale]` (dashboard/admin stay English by
+  design). Translating one string there without translating the rest of the
+  dashboard would be inconsistent, so left as-is.
+- **Mixed-target client navigation (`useRouter().push()`) is a latent
+  trap**: `next-intl`'s `@/i18n/navigation` router blindly prefixes *any*
+  path with the current locale — it has no idea `/dashboard/...` and
+  `/admin/...` live outside `[locale]`. `clinic-booking-card.tsx` was fully
+  safe to swap (both its push targets — `/login`, `/booking/new` — are
+  in-scope). `booking-flow.tsx` and `auth-screen.tsx` were **not** touched
+  because each mixes in-scope pushes (`/login`) with out-of-scope ones
+  (`/dashboard/patient`, `/dashboard/clinic`, `/admin`) in the same
+  component — swapping the router wholesale there would silently 404 the
+  dashboard redirects. Needs either two router instances per component or a
+  small helper that only prefixes known in-scope paths.
+1. **Clinic/procedure content itself (name, description) is still
+   English-only at the data level** — `next-intl` only translates static UI
+   strings, not database content typed in by a clinic owner. Needs its own
+   decision: live-translate via the AI service (cached) vs. leaving content
+   English and only translating the UI shell around it. Not resolved yet.
+2. **`sitemap.ts`, `robots.ts`, JSON-LD structured data (`LocalBusiness`
+   /`MedicalOrganization` schema)** — none of this exists yet. Straightforward
+   with the SSR foundation now in place, just not built.
+3. **Deploy phase (domain, VPS/hosting, SSL, swap every test credential for
+   real ones — Cloudinary, hCaptcha, Gemini)** — not started. Blocks and is
+   blocked by (4): search engines can't index what isn't live at a real
+   domain.
+4. **Search console registration — Baidu Webmaster Tools, Naver Search
+   Advisor** (plus Google Search Console) — not started, depends on (3)
+   being done first.
 
 ### Deliberately not built
 

@@ -48,5 +48,87 @@
       "previous": "上一页",
       "next": "下一页"
     }
+  },
+  "auth": {
+    "emailLabel": "邮箱",
+    "passwordLabel": "密码",
+    "login": {
+      "title": "登录 MediBridge",
+      "submit": "登录",
+      "noAccount": "还没有账号？",
+      "signUpLink": "注册"
+    },
+    "signup": {
+      "title": "创建账号",
+      "submit": "创建账号",
+      "haveAccount": "已有账号？",
+      "logInLink": "登录",
+      "roleLabel": "我是",
+      "rolePatient": "患者",
+      "roleClinic": "诊所",
+      "fullNameLabel": "姓名",
+      "nickLabel": "显示名称",
+      "phoneLabel": "电话号码",
+      "countryLabel": "国家",
+      "languageLabel": "首选语言"
+    }
+  },
+  "clinicProfile": {
+    "verified": "已通过 MediBridge 认证",
+    "reviewsCount": "{count} 条评价",
+    "aboutTitle": "关于诊所",
+    "proceduresTitle": "项目与价格",
+    "reviewsTitle": "患者评价",
+    "recoveryDays": "恢复期 {days} 天",
+    "fromPrice": "${min}–{max} 起",
+    "bookingCard": {
+      "startingFrom": "起价",
+      "procedureLabel": "项目",
+      "dateLabel": "预约日期",
+      "requestButton": "提交预约请求",
+      "chatButton": "先与诊所沟通",
+      "escrowNote": "资金托管保护 · 治疗后付款"
+    }
+  },
+  "booking": {
+    "steps": {
+      "details": "详情",
+      "medicalInfo": "医疗信息",
+      "review": "确认并提交"
+    },
+    "details": {
+      "title": "预约详情",
+      "subtitle": "确认项目并告知诊所您希望的到访时间。",
+      "procedureLabel": "已选项目",
+      "dateLabel": "日期",
+      "flexibilityLabel": "时间灵活度",
+      "noteLabel": "给诊所的留言（可选）",
+      "notePlaceholder": "例如：8月10日到达，希望有女性协调员...",
+      "continueButton": "继续填写医疗信息"
+    },
+    "medicalInfo": {
+      "title": "您的医疗信息",
+      "subtitle": "仅安全地分享给诊所。",
+      "patientDetailsTitle": "患者信息",
+      "fullNameLabel": "姓名",
+      "countryLabel": "国家",
+      "languageLabel": "首选语言",
+      "allergiesLabel": "是否有过敏或其他病史？",
+      "allergiesPlaceholder": "例如：青霉素过敏，或无...",
+      "documentsLabel": "上传文件（可选）",
+      "continueButton": "继续查看确认"
+    },
+    "review": {
+      "title": "确认您的请求",
+      "subtitle": "请仔细核对以下信息。提交后，诊所将审核并确认。",
+      "clinicSectionTitle": "诊所与项目",
+      "patientSectionTitle": "患者信息",
+      "medicalSectionTitle": "医疗信息",
+      "editLink": "编辑",
+      "noPaymentTitle": "暂无需付款",
+      "noPaymentText": "诊所确认具体价格后，才需要付款，资金由托管保护。",
+      "submitButton": "提交预约请求"
+    },
+    "success": "您的预约请求已提交，诊所将尽快审核并确认。"
   }
 }

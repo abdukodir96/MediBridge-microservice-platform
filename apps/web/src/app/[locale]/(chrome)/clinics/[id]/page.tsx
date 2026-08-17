@@ -1,16 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { ClinicBookingCard } from "@/components/clinic-booking-card";
 import { ClinicComments } from "@/components/clinic-comments";
 import { ClinicProfileStats } from "@/components/clinic-profile-stats";
 import { fetchClinicProfile, type ClinicProcedure } from "@/lib/graphql/clinic-profile";
 import { langLabel, titleCaseEnum } from "@/lib/clinic-format";
 
-function clinicBadge(rating: number, reviewCount: number) {
+// Only the "Verified" case has a translation (t("clinicProfile.verified"));
+// the other two badge variants stay English — same scope gap as the
+// /clinics list page's clinicBadgeKey() split.
+function clinicBadge(rating: number, reviewCount: number, verifiedLabel: string) {
 	if (rating >= 4.9) return "Top Rated on MediBridge";
 	if (reviewCount >= 400) return "Patient Choice on MediBridge";
-	return "Verified on MediBridge";
+	return verifiedLabel;
 }
 
 function formatPriceRange(procedure: ClinicProcedure) {
@@ -22,7 +26,7 @@ function formatPriceRange(procedure: ClinicProcedure) {
 
 export default async function ClinicProfilePage({ params }: { params: Promise<{ id: string }> }) {
 	const { id } = await params;
-	const profile = await fetchClinicProfile(id);
+	const [profile, t] = await Promise.all([fetchClinicProfile(id), getTranslations("clinicProfile")]);
 	if (!profile) notFound();
 
 	const { clinic, procedures } = profile;
@@ -69,11 +73,11 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
 						<p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-teal-500">International patient clinic</p>
 						<h1 className="mt-2 font-serif text-4xl font-semibold tracking-tight text-brand-teal-900 sm:text-5xl">{clinic.clinicName}</h1>
 						<span className="mt-4 inline-flex rounded-full bg-brand-teal-100 px-3.5 py-1.5 text-xs font-bold text-brand-teal-700">
-							✦ {clinicBadge(clinic.clinicRating, clinic.clinicReviewCount)}
+							✦ {clinicBadge(clinic.clinicRating, clinic.clinicReviewCount, t("verified"))}
 						</span>
 						<div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-sm text-brand-muted sm:text-base">
 							<span className="font-bold text-brand-ink">
-								<span className="text-brand-gold">★</span> {clinic.clinicRating.toFixed(1)} · {clinic.clinicReviewCount} reviews
+								<span className="text-brand-gold">★</span> {clinic.clinicRating.toFixed(1)} · {t("reviewsCount", { count: clinic.clinicReviewCount })}
 							</span>
 							<span>📍 {clinic.clinicAddress}</span>
 							<span>🗣 {clinic.clinicLangs.map(langLabel).join(" · ")}</span>
@@ -87,12 +91,12 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
 					</header>
 
 					<section className="mt-10">
-						<h2 className="font-serif text-2xl font-semibold text-brand-teal-900">About the clinic</h2>
+						<h2 className="font-serif text-2xl font-semibold text-brand-teal-900">{t("aboutTitle")}</h2>
 						<p className="mt-4 max-w-4xl text-base leading-8 text-brand-muted">{clinic.clinicDesc}</p>
 					</section>
 
 					<section className="mt-10">
-						<h2 className="font-serif text-2xl font-semibold text-brand-teal-900">Procedures & pricing</h2>
+						<h2 className="font-serif text-2xl font-semibold text-brand-teal-900">{t("proceduresTitle")}</h2>
 						<div className="mt-4 divide-y divide-brand-line border-y border-brand-line">
 							{procedures.map((procedure) => (
 								<div key={procedure._id} className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -100,7 +104,7 @@ export default async function ClinicProfilePage({ params }: { params: Promise<{ 
 										<h3 className="font-semibold text-brand-ink">{procedure.procedureName}</h3>
 										<p className="mt-1 text-sm text-brand-muted">
 											{procedure.procedureDesc || titleCaseEnum(procedure.procedureCategory)}
-											{procedure.procedureDuration > 0 ? ` · ${procedure.procedureDuration} days recovery` : ""}
+											{procedure.procedureDuration > 0 ? ` · ${t("recoveryDays", { days: procedure.procedureDuration })}` : ""}
 										</p>
 									</div>
 									<p className="shrink-0 text-right font-bold text-brand-teal-900">

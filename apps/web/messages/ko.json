@@ -48,5 +48,87 @@
       "previous": "이전",
       "next": "다음"
     }
+  },
+  "auth": {
+    "emailLabel": "이메일",
+    "passwordLabel": "비밀번호",
+    "login": {
+      "title": "MediBridge 로그인",
+      "submit": "로그인",
+      "noAccount": "계정이 없으신가요?",
+      "signUpLink": "회원가입"
+    },
+    "signup": {
+      "title": "계정 만들기",
+      "submit": "계정 만들기",
+      "haveAccount": "이미 계정이 있으신가요?",
+      "logInLink": "로그인",
+      "roleLabel": "저는",
+      "rolePatient": "환자",
+      "roleClinic": "클리닉",
+      "fullNameLabel": "이름",
+      "nickLabel": "표시 이름",
+      "phoneLabel": "전화번호",
+      "countryLabel": "국가",
+      "languageLabel": "선호 언어"
+    }
+  },
+  "clinicProfile": {
+    "verified": "MediBridge 인증 완료",
+    "reviewsCount": "리뷰 {count}개",
+    "aboutTitle": "클리닉 소개",
+    "proceduresTitle": "시술 및 가격",
+    "reviewsTitle": "환자 리뷰",
+    "recoveryDays": "회복 기간 {days}일",
+    "fromPrice": "${min}–{max}부터",
+    "bookingCard": {
+      "startingFrom": "시작 가격",
+      "procedureLabel": "시술",
+      "dateLabel": "희망 날짜",
+      "requestButton": "예약 요청하기",
+      "chatButton": "먼저 클리닉과 상담하기",
+      "escrowNote": "에스크로로 보호됨 · 시술 후 결제"
+    }
+  },
+  "booking": {
+    "steps": {
+      "details": "상세 정보",
+      "medicalInfo": "의료 정보",
+      "review": "확인 및 제출"
+    },
+    "details": {
+      "title": "예약 상세 정보",
+      "subtitle": "시술을 확인하고 방문 희망 시기를 클리닉에 알려주세요.",
+      "procedureLabel": "선택한 시술",
+      "dateLabel": "날짜",
+      "flexibilityLabel": "일정 유연성",
+      "noteLabel": "클리닉에 남길 메모 (선택)",
+      "notePlaceholder": "예: 8월 10일 도착 예정, 여성 코디네이터 선호...",
+      "continueButton": "의료 정보 입력으로 이동"
+    },
+    "medicalInfo": {
+      "title": "의료 정보",
+      "subtitle": "클리닉에만 안전하게 공유됩니다.",
+      "patientDetailsTitle": "환자 정보",
+      "fullNameLabel": "이름",
+      "countryLabel": "국가",
+      "languageLabel": "선호 언어",
+      "allergiesLabel": "알레르기나 지병이 있으신가요?",
+      "allergiesPlaceholder": "예: 페니실린 알레르기, 없음...",
+      "documentsLabel": "서류 업로드 (선택)",
+      "continueButton": "확인 단계로 이동"
+    },
+    "review": {
+      "title": "요청 내용 확인",
+      "subtitle": "아래 내용을 다시 한번 확인해 주세요. 제출 후 클리닉에서 검토하고 확정합니다.",
+      "clinicSectionTitle": "클리닉 및 시술",
+      "patientSectionTitle": "환자 정보",
+      "medicalSectionTitle": "의료 정보",
+      "editLink": "수정",
+      "noPaymentTitle": "아직 결제할 필요 없습니다",
+      "noPaymentText": "클리닉이 정확한 가격을 확정한 후 결제가 진행되며, 에스크로로 보호됩니다.",
+      "submitButton": "예약 요청 제출"
+    },
+    "success": "예약 요청이 제출되었습니다. 클리닉에서 곧 검토 후 확정할 예정입니다."
   }
 }

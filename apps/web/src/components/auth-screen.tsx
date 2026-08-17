@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { gql } from "@apollo/client";
 import type { TypedDocumentNode } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
@@ -33,6 +34,7 @@ const SIGNUP: TypedDocumentNode<{ signup: AuthMember }, { input: { memberEmail: 
 const benefits = [["🛡️", "Escrow-protected payments"], ["🌐", "Chat in your own language"], ["✓", "Only verified, licensed clinics"]];
 
 export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
+  const t = useTranslations("auth");
   const router = useRouter();
   const [activeMode, setActiveMode] = useState(mode);
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -162,24 +164,24 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
 
     <section className={`flex items-center justify-center bg-white px-6 py-10 sm:px-10 lg:absolute lg:inset-y-0 lg:w-[40%] lg:overflow-y-auto lg:px-12 lg:transition-[left] lg:duration-700 lg:ease-in-out ${isSignup ? "lg:left-[60%]" : "lg:left-0"}`}><div className="w-full max-w-[510px]">
       <nav className="mb-10 grid grid-cols-2 rounded-xl bg-brand-cream p-1"><button type="button" onClick={() => changeMode("login")} aria-pressed={!isSignup} className={`flex min-h-12 items-center justify-center rounded-lg text-sm font-semibold ${!isSignup ? "bg-white text-brand-teal-900 shadow-sm" : "text-brand-muted"}`}>Log in</button><button type="button" onClick={() => changeMode("signup")} aria-pressed={isSignup} className={`flex min-h-12 items-center justify-center rounded-lg text-sm font-semibold ${isSignup ? "bg-white text-brand-teal-900 shadow-sm" : "text-brand-muted"}`}>Sign up</button></nav>
-      <h2 className="font-serif text-[30px] font-semibold text-brand-teal-900">{isSignup ? "Create your account" : "Welcome back"}</h2>
+      <h2 className="font-serif text-[30px] font-semibold text-brand-teal-900">{isSignup ? t("signup.title") : t("login.title")}</h2>
       <p className="mt-2 text-sm text-brand-muted">{isSignup ? "Start comparing clinics in minutes." : "Log in to continue your MediBridge journey."}</p>
 
       {isSignup && (
         <div className={`mt-7 flex transition-[gap] duration-700 ease-in-out ${role ? "gap-0" : "gap-4"}`}>
           <div className={`min-w-0 basis-0 overflow-hidden transition-[flex-grow,opacity,transform] duration-700 ease-in-out ${!role || role === "PATIENT" ? "grow scale-100 opacity-100" : "pointer-events-none grow-0 scale-90 opacity-0"}`}>
-            <RoleButton active={role === "PATIENT"} onClick={() => setRole(role === "PATIENT" ? null : "PATIENT")} icon="🧑" label="I'm a patient" />
+            <RoleButton active={role === "PATIENT"} onClick={() => setRole(role === "PATIENT" ? null : "PATIENT")} icon="🧑" label={t("signup.rolePatient")} />
           </div>
           <div className={`min-w-0 basis-0 overflow-hidden transition-[flex-grow,opacity,transform] duration-700 ease-in-out ${!role || role === "CLINIC" ? "grow scale-100 opacity-100" : "pointer-events-none grow-0 scale-90 opacity-0"}`}>
-            <RoleButton active={role === "CLINIC"} onClick={() => setRole(role === "CLINIC" ? null : "CLINIC")} icon="🏥" label="I'm a clinic" />
+            <RoleButton active={role === "CLINIC"} onClick={() => setRole(role === "CLINIC" ? null : "CLINIC")} icon="🏥" label={t("signup.roleClinic")} />
           </div>
         </div>
       )}
 
       <form onSubmit={handleSubmit} autoComplete={isSignup ? "off" : "on"} className="mt-7 space-y-5">
-        {isSignup && <div className="grid gap-4 sm:grid-cols-2"><AuthField label="Nickname" value={nickname} onChange={setNickname} placeholder="Your name" autoComplete="nickname" /><AuthField label="Phone" value={phone} onChange={setPhone} placeholder="+82 10 0000 0000" autoComplete="tel" type="tel" /></div>}
-        <AuthField label="Email" value={email} onChange={setEmail} placeholder="you@example.com" autoComplete="email" type="email" />
-        <AuthField label="Password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete={isSignup ? "off" : "current-password"} type="password" minLength={6} />
+        {isSignup && <div className="grid gap-4 sm:grid-cols-2"><AuthField label={t("signup.nickLabel")} value={nickname} onChange={setNickname} placeholder="Your name" autoComplete="nickname" /><AuthField label={t("signup.phoneLabel")} value={phone} onChange={setPhone} placeholder="+82 10 0000 0000" autoComplete="tel" type="tel" /></div>}
+        <AuthField label={t("emailLabel")} value={email} onChange={setEmail} placeholder="you@example.com" autoComplete="email" type="email" />
+        <AuthField label={t("passwordLabel")} value={password} onChange={setPassword} placeholder="••••••••" autoComplete={isSignup ? "off" : "current-password"} type="password" minLength={6} />
         {isSignup && <AuthField label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} placeholder="••••••••" autoComplete="off" type="password" minLength={6} />}
         {!isSignup && <div className="flex items-center justify-between text-xs text-brand-muted"><label className="flex items-center gap-2"><input type="checkbox" className="accent-brand-teal-700" />Remember me</label><button type="button" className="font-semibold text-brand-teal-700 hover:underline">Forgot password?</button></div>}
         {!isSignup && needsCaptcha && (
@@ -192,7 +194,7 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
           </div>
         )}
         {(formError || error) && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{formError || error?.message}</p>}
-        <button disabled={loading || (needsCaptcha && !captchaToken)} className="min-h-[52px] w-full rounded-xl bg-brand-teal-700 text-sm font-bold text-white transition hover:bg-brand-teal-900 disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Please wait..." : isSignup ? "Create account" : "Log in"}</button>
+        <button disabled={loading || (needsCaptcha && !captchaToken)} className="min-h-[52px] w-full rounded-xl bg-brand-teal-700 text-sm font-bold text-white transition hover:bg-brand-teal-900 disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Please wait..." : isSignup ? t("signup.submit") : t("login.submit")}</button>
       </form>
       <div className="my-6 flex items-center gap-3 text-xs text-brand-muted before:h-px before:flex-1 before:bg-brand-line after:h-px after:flex-1 after:bg-brand-line"><span>or continue with</span></div>
       <button type="button" className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-brand-line text-sm font-semibold text-brand-ink transition hover:border-brand-teal-500 hover:bg-brand-cream/60">

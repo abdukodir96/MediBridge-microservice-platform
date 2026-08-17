@@ -48,5 +48,87 @@
       "previous": "前へ",
       "next": "次へ"
     }
+  },
+  "auth": {
+    "emailLabel": "メールアドレス",
+    "passwordLabel": "パスワード",
+    "login": {
+      "title": "MediBridgeにログイン",
+      "submit": "ログイン",
+      "noAccount": "アカウントをお持ちでないですか？",
+      "signUpLink": "新規登録"
+    },
+    "signup": {
+      "title": "アカウントを作成",
+      "submit": "アカウントを作成",
+      "haveAccount": "すでにアカウントをお持ちですか？",
+      "logInLink": "ログイン",
+      "roleLabel": "登録タイプ",
+      "rolePatient": "患者",
+      "roleClinic": "クリニック",
+      "fullNameLabel": "氏名",
+      "nickLabel": "表示名",
+      "phoneLabel": "電話番号",
+      "countryLabel": "国",
+      "languageLabel": "希望言語"
+    }
+  },
+  "clinicProfile": {
+    "verified": "MediBridge認証済み",
+    "reviewsCount": "レビュー{count}件",
+    "aboutTitle": "クリニックについて",
+    "proceduresTitle": "施術と料金",
+    "reviewsTitle": "患者レビュー",
+    "recoveryDays": "回復期間 {days}日",
+    "fromPrice": "${min}〜{max}",
+    "bookingCard": {
+      "startingFrom": "最低料金",
+      "procedureLabel": "施術",
+      "dateLabel": "希望日",
+      "requestButton": "予約をリクエスト",
+      "chatButton": "先にクリニックとチャット",
+      "escrowNote": "エスクローで保護 · 施術後に支払い"
+    }
+  },
+  "booking": {
+    "steps": {
+      "details": "詳細",
+      "medicalInfo": "医療情報",
+      "review": "確認して送信"
+    },
+    "details": {
+      "title": "予約の詳細",
+      "subtitle": "施術を確認し、希望の来院時期をクリニックに伝えましょう。",
+      "procedureLabel": "選択した施術",
+      "dateLabel": "日付",
+      "flexibilityLabel": "日程の融通",
+      "noteLabel": "クリニックへのメモ（任意）",
+      "notePlaceholder": "例：8月10日到着予定、女性コーディネーター希望...",
+      "continueButton": "医療情報の入力へ"
+    },
+    "medicalInfo": {
+      "title": "医療情報",
+      "subtitle": "クリニックのみに安全に共有されます。",
+      "patientDetailsTitle": "患者情報",
+      "fullNameLabel": "氏名",
+      "countryLabel": "国",
+      "languageLabel": "希望言語",
+      "allergiesLabel": "アレルギーや既往歴はありますか？",
+      "allergiesPlaceholder": "例：ペニシリンアレルギー、なし...",
+      "documentsLabel": "書類のアップロード（任意）",
+      "continueButton": "確認画面へ"
+    },
+    "review": {
+      "title": "リクエスト内容の確認",
+      "subtitle": "以下の内容をご確認ください。送信後、クリニックが確認し確定します。",
+      "clinicSectionTitle": "クリニックと施術",
+      "patientSectionTitle": "患者情報",
+      "medicalSectionTitle": "医療情報",
+      "editLink": "編集",
+      "noPaymentTitle": "現時点でお支払いは不要です",
+      "noPaymentText": "クリニックが正式な料金を確定した後にお支払いいただきます。エスクローで保護されます。",
+      "submitButton": "予約リクエストを送信"
+    },
+    "success": "予約リクエストを送信しました。クリニックが確認後、まもなくご連絡します。"
   }
 }

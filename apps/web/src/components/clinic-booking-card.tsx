@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import Swal from "sweetalert2";
 
 const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -23,6 +24,7 @@ export function ClinicBookingCard({
   startingPrice: string;
   procedures: BookingProcedureOption[];
 }) {
+  const t = useTranslations("clinicProfile.bookingCard");
   const router = useRouter();
   const [procedureId, setProcedureId] = useState(procedures[0]?._id ?? "");
   const [date, setDate] = useState("2026-08-12");
@@ -81,11 +83,11 @@ export function ClinicBookingCard({
 
   return (
     <aside className="sticky top-6 flex min-h-[820px] flex-col rounded-2xl border border-brand-line bg-white p-7 shadow-2xl shadow-brand-teal-900/10 sm:p-8">
-      <p className="text-sm text-brand-muted">Starting from</p>
+      <p className="text-sm text-brand-muted">{t("startingFrom")}</p>
       <p className="mt-1 font-serif text-[42px] font-semibold text-brand-teal-900">{startingPrice}</p>
 
       <div ref={procedureRef} className="relative z-30 mt-8 rounded-xl border border-brand-line p-5">
-        <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-brand-muted">Procedure</span>
+        <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-brand-muted">{t("procedureLabel")}</span>
         <button
           type="button"
           onClick={() => {
@@ -134,7 +136,7 @@ export function ClinicBookingCard({
       </div>
 
       <div ref={calendarRef} className="relative z-20 mt-5 rounded-xl border border-brand-line p-5">
-        <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-brand-muted">Preferred date</span>
+        <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-brand-muted">{t("dateLabel")}</span>
         <button
           type="button"
           onClick={() => {
@@ -193,10 +195,10 @@ export function ClinicBookingCard({
       </div>
 
       <button type="button" onClick={() => void requestBooking()} className="mt-7 min-h-14 w-full rounded-xl bg-brand-teal-700 px-6 text-base font-bold text-white transition hover:bg-brand-teal-900">
-        Request booking
+        {t("requestButton")}
       </button>
       <button type="button" onClick={() => void startChat()} className="mt-4 min-h-14 w-full rounded-xl border border-brand-line bg-white px-6 text-base font-bold text-brand-teal-900 transition hover:border-brand-teal-500 hover:bg-brand-cream">
-        💬 Chat with clinic first
+        💬 {t("chatButton")}
       </button>
 
       <div className="mt-7 rounded-xl bg-brand-cream/75 p-5">
@@ -216,7 +218,7 @@ export function ClinicBookingCard({
       </div>
 
       <div className="mt-auto border-t border-brand-line pt-6">
-        <p className="flex items-center justify-center gap-2 text-xs text-brand-muted">🛡 Protected by escrow · pay after treatment</p>
+        <p className="flex items-center justify-center gap-2 text-xs text-brand-muted">🛡 {t("escrowNote")}</p>
         <p className="mt-4 rounded-lg bg-brand-teal-100/55 px-4 py-3 text-center text-xs font-semibold text-brand-teal-700">⚡ Usually responds within 2 hours</p>
       </div>
     </aside>
