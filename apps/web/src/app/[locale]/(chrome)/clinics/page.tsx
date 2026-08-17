@@ -1,13 +1,8 @@
-"use client";
-
-import { Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useQuery } from "@apollo/client/react";
 import { LikeButton } from "@/components/like-button";
 import { Pagination } from "@/components/pagination";
 import { ClinicsFilterPanel, ClinicsSort } from "@/components/clinics-filter-panel";
-import { GET_CLINICS } from "@/lib/graphql/clinics";
+import { fetchClinics } from "@/lib/graphql/clinics";
 import { toBackendSort } from "@/lib/clinic-sort";
 import { toBackendSpecialties, toBackendLangs } from "@/lib/clinic-filters";
 import { titleCaseEnum } from "@/lib/clinic-format";
@@ -15,61 +10,62 @@ import { CARD_GRADIENTS, clinicBadge } from "@/lib/clinic-card";
 
 const CLINICS_PER_PAGE = 6;
 
-function parseList(value?: string | null) {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+// searchParams values can be string[] if a key repeats in the URL (never
+// happens from our own UI, which always writes a single comma-joined
+// value, but a hand-crafted URL could) — take the first occurrence rather
+// than letting later code choke on an array where a string is expected.
+function firstParam(value: string | string[] | undefined): string | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+function parseList(value: string | null) {
   return value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
 }
 
 function clampPrice(value: string | null, fallback: number) {
-  // useSearchParams().get() returns null (not undefined) when the param is
-  // absent, and Number(null) is 0 — not NaN — so it would silently pass the
-  // isFinite check below and clamp to 0 instead of falling back. Must be
-  // checked explicitly before the Number() conversion.
   if (value == null || value === "") return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.min(8000, Math.max(0, parsed)) : fallback;
 }
 
-export default function ClinicsPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-white" />}>
-      <ClinicsPageContent />
-    </Suspense>
-  );
-}
+export default async function ClinicsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
 
-function ClinicsPageContent() {
-  const searchParams = useSearchParams();
-
-  const selectedSpecialties = parseList(searchParams.get("specialties") ?? searchParams.get("treatment"));
-  const selectedLocations = parseList(searchParams.get("locations") ?? searchParams.get("city"));
-  const selectedLanguages = parseList(searchParams.get("languages") ?? searchParams.get("language"));
-  const minPrice = clampPrice(searchParams.get("minPrice"), 0);
-  const maxPrice = clampPrice(searchParams.get("maxPrice"), 8000);
-  const uiSort = ["most-reviewed", "price-low", "price-high"].includes(searchParams.get("sort") ?? "")
-    ? searchParams.get("sort")!
+  const selectedSpecialties = parseList(firstParam(params.specialties) ?? firstParam(params.treatment));
+  const selectedLocations = parseList(firstParam(params.locations) ?? firstParam(params.city));
+  const selectedLanguages = parseList(firstParam(params.languages) ?? firstParam(params.language));
+  const minPrice = clampPrice(firstParam(params.minPrice), 0);
+  const maxPrice = clampPrice(firstParam(params.maxPrice), 8000);
+  const rawSort = firstParam(params.sort);
+  const uiSort = ["most-reviewed", "price-low", "price-high"].includes(rawSort ?? "")
+    ? (rawSort as string)
     : "top-rated";
-  const requestedPage = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const requestedPage = Math.max(1, Number.parseInt(firstParam(params.page) ?? "1", 10) || 1);
 
   const backendSpecialties = toBackendSpecialties(selectedSpecialties);
   const backendLangs = toBackendLangs(selectedLanguages);
 
-  const { data, loading, error } = useQuery(GET_CLINICS, {
-    variables: {
-      input: {
-        specialties: backendSpecialties.length ? backendSpecialties : undefined,
-        langs: backendLangs.length ? backendLangs : undefined,
-        locations: selectedLocations.length ? selectedLocations : undefined,
-        priceMin: minPrice > 0 ? minPrice : undefined,
-        priceMax: maxPrice < 8000 ? maxPrice : undefined,
-        sort: toBackendSort(uiSort),
-        page: requestedPage,
-        limit: CLINICS_PER_PAGE,
-      },
-    },
+  const {
+    list: clinics,
+    total,
+    error,
+  } = await fetchClinics({
+    specialties: backendSpecialties.length ? backendSpecialties : undefined,
+    langs: backendLangs.length ? backendLangs : undefined,
+    locations: selectedLocations.length ? selectedLocations : undefined,
+    priceMin: minPrice > 0 ? minPrice : undefined,
+    priceMax: maxPrice < 8000 ? maxPrice : undefined,
+    sort: toBackendSort(uiSort),
+    page: requestedPage,
+    limit: CLINICS_PER_PAGE,
   });
 
-  const clinics = data?.getClinics.list ?? [];
-  const total = data?.getClinics.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / CLINICS_PER_PAGE));
   const currentPage = Math.min(requestedPage, totalPages);
 
@@ -104,22 +100,12 @@ function ClinicsPageContent() {
             <ClinicsSort value={uiSort} />
           </div>
 
-          {loading && (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-              {Array.from({ length: CLINICS_PER_PAGE }).map((_, index) => (
-                <div key={index} className="h-105 animate-pulse rounded-xl border border-brand-line bg-brand-cream/60" />
-              ))}
-            </div>
-          )}
-
-          {error && !loading && (
+          {error ? (
             <div className="rounded-2xl border border-dashed border-brand-line bg-brand-cream/40 px-6 py-16 text-center">
               <h2 className="font-serif text-2xl font-semibold text-brand-teal-900">Couldn&apos;t load clinics</h2>
-              <p className="mt-2 text-brand-muted">{error.message}</p>
+              <p className="mt-2 text-brand-muted">{error}</p>
             </div>
-          )}
-
-          {!loading && !error && (
+          ) : (
             <>
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
                 {clinics.map((clinic, index) => (

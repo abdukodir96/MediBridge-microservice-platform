@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Link as LocaleLink } from "@/i18n/navigation";
+import { getTranslations } from "next-intl/server";
 import { LikeButton } from "@/components/like-button";
 import { TrustStats } from "@/components/trust-stats";
 import { ClinicSearchBar } from "@/components/clinic-search-bar";
@@ -29,7 +31,10 @@ const steps = [
 ];
 
 export default async function Home() {
-  const { list: clinics } = await fetchClinics({ sort: "TOP_RATED", limit: 4 });
+  const [{ list: clinics }, t] = await Promise.all([
+    fetchClinics({ sort: "TOP_RATED", limit: 4 }),
+    getTranslations("landing"),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col bg-white">
@@ -48,14 +53,14 @@ export default async function Home() {
         </div>
 
         <span className="mb-7 inline-flex items-center gap-2 rounded-full bg-brand-teal-100 px-5 py-2.5 text-base font-semibold uppercase tracking-wider text-brand-teal-500">
-          ✦ 1.17M+ patients trust Korea every year
+          {t("badge")}
         </span>
         <h1 className="mb-7 max-w-4xl font-serif text-[64px] font-semibold leading-[1.08] tracking-tight text-brand-teal-900 sm:text-[78px]">
-          Your bridge to Korea&apos;s <em className="italic text-brand-gold">trusted</em> clinics.
+          {t("heroTitleStart")}{" "}
+          <em className="italic text-brand-gold">{t("heroTitleEmphasis")}</em> {t("heroTitleEnd")}
         </h1>
         <p className="mb-14 max-w-3xl text-[22px] leading-relaxed text-brand-muted sm:text-[27px]">
-          Compare verified plastic surgery & dermatology clinics, book with confidence, and pay
-          safely — every step handled in your language.
+          {t("heroSubtitle")}
         </p>
 
         {/* SEARCH */}
@@ -75,10 +80,10 @@ export default async function Home() {
               Hand-verified by our medical team · updated weekly
             </p>
           </div>
-          <Link href="/clinics" className="group flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-brand-teal-500">
-            View all clinics
+          <LocaleLink href="/clinics" className="group flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-brand-teal-500">
+            {t("viewAllClinics")}
             <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-          </Link>
+          </LocaleLink>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {clinics.map((clinic, index) => (

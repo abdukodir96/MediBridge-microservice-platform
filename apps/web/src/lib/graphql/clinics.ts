@@ -98,7 +98,9 @@ const GET_CLINICS_QUERY = `
 // Clinics section) — same query as GET_CLINICS above, but run via a plain
 // fetch instead of Apollo's browser-oriented client. Mirrors the pattern in
 // lib/graphql/clinic-profile.ts.
-export async function fetchClinics(input: ClinicsInquiry): Promise<{ list: Clinic[]; total: number }> {
+export async function fetchClinics(
+	input: ClinicsInquiry,
+): Promise<{ list: Clinic[]; total: number; error?: string }> {
 	const res = await fetch(process.env.NEXT_PUBLIC_GATEWAY_URL as string, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -106,6 +108,15 @@ export async function fetchClinics(input: ClinicsInquiry): Promise<{ list: Clini
 		cache: 'no-store',
 	});
 
-	const json = (await res.json()) as { data: GetClinicsData | null };
+	// A GraphQL error (e.g. priceMax < priceMin) still comes back as HTTP 200
+	// — checking res.ok alone would silently treat it as "zero results"
+	// instead of surfacing the real problem.
+	const json = (await res.json()) as {
+		data: GetClinicsData | null;
+		errors?: Array<{ message: string }>;
+	};
+	if (json.errors?.length) {
+		return { list: [], total: 0, error: json.errors[0].message };
+	}
 	return json.data?.getClinics ?? { list: [], total: 0 };
 }
