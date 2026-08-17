@@ -54,6 +54,11 @@ export class LoginProtectionService {
 		}
 	}
 
+	public async getAttemptCount(email: string, ipAddress: string): Promise<number> {
+		const record = await this.attemptModel.findOne({ email, ipAddress }).exec();
+		return record?.attempts ?? 0;
+	}
+
 	public async recordSuccess(email: string, ipAddress: string): Promise<void> {
 		// Correct password proves this is the real owner, not a brute-forcer —
 		// clear the record even if it was mid-lockout.

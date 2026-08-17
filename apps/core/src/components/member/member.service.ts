@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
+import { GraphQLError } from 'graphql';
 import { Member } from '../../libs/dto/member/member';
 import {
 	MemberInput,
@@ -28,6 +29,17 @@ type MemberDocument = Member & { memberPassword: string };
 // hash step makes that path measurably faster than a wrong-password path on
 // a real account, leaking which emails are registered via response timing.
 const DUMMY_HASH = hashPassword('timing-safety-dummy-value');
+
+// A plain BadRequestException's extra fields never reach the client — Apollo
+// only serializes `extensions.code` + `originalError` (built from a *string*
+// response, not an arbitrary object) for HttpExceptions. A GraphQLError is
+// the documented way to put custom, client-readable data (requiresCaptcha)
+// directly under `extensions`.
+function captchaRequiredError(message: string): GraphQLError {
+	return new GraphQLError(message, {
+		extensions: { code: 'BAD_REQUEST', requiresCaptcha: true },
+	});
+}
 
 @Injectable()
 export class MemberService {
@@ -68,9 +80,24 @@ export class MemberService {
 	}
 
 	public async login(input: LoginInput, ipAddress: string): Promise<Member> {
-		const { memberEmail, memberPassword } = input;
+		const { memberEmail, memberPassword, captchaToken } = input;
 
 		await this.loginProtection.assertNotLocked(memberEmail, ipAddress);
+
+		// Once this email+IP has racked up 3+ prior failures, a captcha is
+		// required before we even look at the password — closes the gap where
+		// an attacker could keep guessing right up to (but never past) the
+		// lockout threshold, forever, without ever solving anything.
+		const priorAttempts = await this.loginProtection.getAttemptCount(memberEmail, ipAddress);
+		if (priorAttempts >= 3) {
+			if (!captchaToken) {
+				throw captchaRequiredError('Captcha verification required');
+			}
+			const captchaValid = await this.verifyCaptcha(captchaToken);
+			if (!captchaValid) {
+				throw captchaRequiredError('Captcha verification failed');
+			}
+		}
 
 		// Find by email — the schema excludes memberPassword by default
 		// (select: false), so it has to be re-included explicitly. Using an
@@ -93,6 +120,10 @@ export class MemberService {
 			await this.loginProtection.recordFailure(memberEmail, ipAddress);
 			// Same message for "no such user" and "wrong password" — distinguishing
 			// them lets an attacker enumerate registered emails.
+			const attemptsNow = await this.loginProtection.getAttemptCount(memberEmail, ipAddress);
+			if (attemptsNow >= 3) {
+				throw captchaRequiredError('Invalid credentials');
+			}
 			throw new BadRequestException('Invalid credentials');
 		}
 
@@ -109,6 +140,19 @@ export class MemberService {
 		// Create the token — same toObject() + spread reasoning as signup()
 		const accessToken = await this.authService.createToken(member);
 		return { ...member.toObject(), accessToken } as Member;
+	}
+
+	private async verifyCaptcha(token: string): Promise<boolean> {
+		const res = await fetch('https://hcaptcha.com/siteverify', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams({
+				secret: process.env.HCAPTCHA_SECRET as string,
+				response: token,
+			}),
+		});
+		const data = (await res.json()) as { success: boolean };
+		return data.success === true;
 	}
 
 	public async getMember(memberId: ObjectId): Promise<Member> {

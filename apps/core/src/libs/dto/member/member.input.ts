@@ -62,6 +62,10 @@ export class LoginInput {
 	@Length(6, 30)
 	@Field(() => String)
 	memberPassword: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	captchaToken?: string;
 }
 
 @InputType()
