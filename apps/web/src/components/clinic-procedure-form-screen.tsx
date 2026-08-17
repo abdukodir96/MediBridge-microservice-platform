@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/lib/plain-navigation";
 import Swal from "sweetalert2";
 import { useMutation, useQuery } from "@apollo/client/react";
 import {

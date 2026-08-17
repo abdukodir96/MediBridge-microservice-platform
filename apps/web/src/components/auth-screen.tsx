@@ -9,8 +9,8 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import GoogleIcon from "@mui/icons-material/Google";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter as usePlainRouter } from "@/lib/plain-navigation";
 
 type SignupRole = "PATIENT" | "CLINIC";
 type MemberType = "PATIENT" | "CLINIC" | "ADMIN";
@@ -35,7 +35,8 @@ const benefits = [["🛡️", "Escrow-protected payments"], ["🌐", "Chat in yo
 
 export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
   const t = useTranslations("auth");
-  const router = useRouter();
+  const router = useRouter(); // in-scope targets only: /login, /signup
+  const plainRouter = usePlainRouter(); // out-of-scope targets: /admin, /dashboard/*
   const [activeMode, setActiveMode] = useState(mode);
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSignup = activeMode === "signup";
@@ -79,9 +80,9 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
       localStorage.removeItem("memberImage");
     }
     window.dispatchEvent(new Event("storage"));
-    if (member.memberType === "ADMIN") router.push("/admin");
-    else if (member.memberType === "CLINIC") router.push("/dashboard/clinic");
-    else router.push("/dashboard/patient");
+    if (member.memberType === "ADMIN") plainRouter.push("/admin");
+    else if (member.memberType === "CLINIC") plainRouter.push("/dashboard/clinic");
+    else plainRouter.push("/dashboard/patient");
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

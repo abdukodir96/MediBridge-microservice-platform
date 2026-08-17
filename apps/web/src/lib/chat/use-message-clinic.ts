@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/plain-navigation";
 import Swal from "sweetalert2";
 import { connectChatSocket } from "@/lib/chat/socket";
 

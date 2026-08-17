@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
+import { Link as PlainLink } from "@/lib/plain-navigation";
 import { Logo } from "@/components/logo";
 import { NavAuthLinks, useMemberType } from "@/components/nav-auth-links";
 import { useChromeHidden } from "@/components/chrome-visibility";
@@ -51,7 +51,7 @@ export function SiteHeader() {
           🌐 EN
         </span>
         {isAuthenticated ? (
-          <Link
+          <PlainLink
             href={dashboardHref}
             aria-label={memberType === "CLINIC" ? "Open My Clinic" : "Open My Page"}
             className="rounded-full transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
@@ -63,7 +63,7 @@ export function SiteHeader() {
               height={46}
               className="h-[46px] w-[46px] rounded-full border-2 border-white object-cover shadow-sm"
             />
-          </Link>
+          </PlainLink>
         ) : (
           <>
             <Link

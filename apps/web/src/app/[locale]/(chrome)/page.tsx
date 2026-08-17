@@ -1,6 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
-import { Link as LocaleLink } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { getTranslations } from "next-intl/server";
 import { LikeButton } from "@/components/like-button";
 import { TrustStats } from "@/components/trust-stats";
@@ -80,10 +79,10 @@ export default async function Home() {
               Hand-verified by our medical team · updated weekly
             </p>
           </div>
-          <LocaleLink href="/clinics" className="group flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-brand-teal-500">
+          <Link href="/clinics" className="group flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-brand-teal-500">
             {t("viewAllClinics")}
             <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-          </LocaleLink>
+          </Link>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {clinics.map((clinic, index) => (

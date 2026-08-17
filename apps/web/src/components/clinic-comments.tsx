@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useMemo, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import Swal from "sweetalert2";
 
 type Reply = {

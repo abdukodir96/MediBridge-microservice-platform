@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/plain-navigation";
 import Swal from "sweetalert2";
 import { useMutation, useQuery } from "@apollo/client/react";
 import {

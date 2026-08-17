@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { HideChrome } from "@/components/chrome-visibility";
 
 export default function NotFound() {

@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { Link, usePathname } from "@/lib/plain-navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useApolloClient } from "@apollo/client/react";
 

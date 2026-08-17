@@ -219,17 +219,20 @@ carried over from `/clinics`.
   which is deliberately outside `[locale]` (dashboard/admin stay English by
   design). Translating one string there without translating the rest of the
   dashboard would be inconsistent, so left as-is.
-- **Mixed-target client navigation (`useRouter().push()`) is a latent
-  trap**: `next-intl`'s `@/i18n/navigation` router blindly prefixes *any*
-  path with the current locale — it has no idea `/dashboard/...` and
-  `/admin/...` live outside `[locale]`. `clinic-booking-card.tsx` was fully
-  safe to swap (both its push targets — `/login`, `/booking/new` — are
-  in-scope). `booking-flow.tsx` and `auth-screen.tsx` were **not** touched
-  because each mixes in-scope pushes (`/login`) with out-of-scope ones
-  (`/dashboard/patient`, `/dashboard/clinic`, `/admin`) in the same
-  component — swapping the router wholesale there would silently 404 the
-  dashboard redirects. Needs either two router instances per component or a
-  small helper that only prefixes known in-scope paths.
+- **~~Mixed-target client navigation (`useRouter().push()`) is a latent
+  trap~~ — resolved.** Two explicit navigation utilities now exist:
+  `@/i18n/navigation` (locale-prefixed, for paths under `[locale]` —
+  `/`, `/clinics`, `/login`, `/signup`, `/booking/new`) and
+  `@/lib/plain-navigation.ts` (plain Next.js navigation, for
+  `/dashboard/*` and `/admin/*`, which live outside `[locale]`). Every
+  `useRouter`/`Link`/`usePathname` import in the app was audited and routed
+  to the correct one; components that genuinely mix both target types
+  (`auth-screen.tsx`, `booking-flow.tsx`, `site-header.tsx`,
+  `nav-auth-links.tsx`) hold two router/Link instances side by side, one per
+  scope. Verified live across all 4 locales: direct loads and rendered
+  `<a href>` targets on `/`, `/clinics`, `/login`, `/booking/new`,
+  `/dashboard/*`, `/admin`, and the 404 page all resolve correctly with no
+  404s or lost locale prefixes.
 1. **Deploy phase (domain, VPS/hosting, SSL, swap every test credential for
    real ones — Cloudinary, hCaptcha, Gemini)** — not started. Blocks and is
    blocked by (2): search engines can't index what isn't live at a real

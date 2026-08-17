@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { Link, useRouter } from "@/lib/plain-navigation";
 import Swal from "sweetalert2";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { useProfileImage } from "@/components/use-profile-image";
@@ -611,9 +611,11 @@ function ClinicRequests() {
   const [cancelBooking, { loading: cancelling }] = useMutation(CANCEL_BOOKING);
   const busy = confirming || cancelling;
 
-  const requests = (data?.getClinicBookings.list ?? []).filter(
-    (booking) => booking.bookingStatus === "REQUESTED",
-  );
+  // Overview is a preview, not the management surface — cap at 3 with a
+  // "View all" link to the full page (which already lists every status).
+  const requests = (data?.getClinicBookings.list ?? [])
+    .filter((booking) => booking.bookingStatus === "REQUESTED")
+    .slice(0, 3);
 
   const handleConfirm = async (booking: ClinicBooking) => {
     const result = await Swal.fire({

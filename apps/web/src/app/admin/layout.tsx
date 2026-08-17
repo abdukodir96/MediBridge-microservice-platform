@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/plain-navigation";
 import { AdminShell } from "@/components/admin-shell";
 
 // Client-side route guard. This is a UI convenience, not the real security

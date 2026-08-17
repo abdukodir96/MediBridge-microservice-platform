@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { Link } from "@/lib/plain-navigation";
 import { useProfileImage } from "@/components/use-profile-image";
 import { ChatPanel } from "@/components/chat-panel";
 import { useChatMessages } from "@/lib/chat/useChatMessages";

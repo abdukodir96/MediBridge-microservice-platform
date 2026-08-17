@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/lib/plain-navigation";
 import { useMutation, useQuery } from "@apollo/client/react";
 import {
   DashboardSidebar,

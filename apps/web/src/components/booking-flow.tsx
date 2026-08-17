@@ -2,8 +2,9 @@
 
 import { ChangeEvent, DragEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter as usePlainRouter } from "@/lib/plain-navigation";
 import Image from "next/image";
 import Swal from "sweetalert2";
 import { useMutation } from "@apollo/client/react";
@@ -48,7 +49,8 @@ const initialForm: FormState = {
 
 export function BookingFlow() {
   const t = useTranslations("booking");
-  const router = useRouter();
+  const router = useRouter(); // in-scope targets only: /login
+  const plainRouter = usePlainRouter(); // out-of-scope target: /dashboard/patient
   const searchParams = useSearchParams();
   const clinicId = searchParams.get("clinic") || "";
   const clinicName = searchParams.get("clinicName") || "";
@@ -147,7 +149,7 @@ export function BookingFlow() {
       // failure (e.g. a dropped connection) the patient's filled-in form
       // must still be there when they retry.
       sessionStorage.removeItem(draftKey);
-      router.push("/dashboard/patient?submitted=true");
+      plainRouter.push("/dashboard/patient?submitted=true");
     } catch {
       // error is exposed via the mutation's `error` state and rendered
       // near the submit button; draft stays intact for a retry.
