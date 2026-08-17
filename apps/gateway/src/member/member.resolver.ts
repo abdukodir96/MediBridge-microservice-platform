@@ -1,6 +1,7 @@
 import { Inject, UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { ClientProxy } from '@nestjs/microservices';
+import type { Request } from 'express';
 import { firstValueFrom } from 'rxjs';
 import {
 	Member,
@@ -40,10 +41,15 @@ export class MemberResolver {
 	}
 
 	@Mutation(() => Member)
-	public async login(@Args('input') input: LoginInput): Promise<Member> {
+	public async login(
+		@Args('input') input: LoginInput,
+		@Context() context: { req: Request },
+	): Promise<Member> {
 		console.log('Gateway: login → TCP → Core');
+		const ipAddress =
+			(context.req.headers['x-forwarded-for'] as string) ?? context.req.ip ?? 'unknown';
 		const result = await firstValueFrom(
-			this.coreClient.send({ cmd: 'member.login' }, input),
+			this.coreClient.send({ cmd: 'member.login' }, { input, ipAddress }),
 		);
 		return toMember(result);
 	}

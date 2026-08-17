@@ -15,18 +15,26 @@ import {
 } from '../../libs/dto/member/member.input';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { AuthService } from '../auth/auth.service';
-import { comparePassword } from '../../libs/config';
+import { LoginProtectionService } from '../auth/login-protection.service';
+import { comparePassword, hashPassword } from '../../libs/config';
 
 // The GraphQL Member DTO deliberately omits memberPassword (never exposed to
 // the client), but the raw Mongoose document still has it — this type
 // restores it for internal use only (hashing/comparing on signup/login).
 type MemberDocument = Member & { memberPassword: string };
 
+// Computed once at module load, not per-request — a nonexistent-email login
+// must still pay for a bcrypt.compare() against *something*, or the missing
+// hash step makes that path measurably faster than a wrong-password path on
+// a real account, leaking which emails are registered via response timing.
+const DUMMY_HASH = hashPassword('timing-safety-dummy-value');
+
 @Injectable()
 export class MemberService {
 	constructor(
 		@InjectModel('Member') private readonly memberModel: Model<MemberDocument>,
 		private authService: AuthService,
+		private loginProtection: LoginProtectionService,
 	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
@@ -59,10 +67,12 @@ export class MemberService {
 		}
 	}
 
-	public async login(input: LoginInput): Promise<Member> {
+	public async login(input: LoginInput, ipAddress: string): Promise<Member> {
 		const { memberEmail, memberPassword } = input;
 
-		// 1. Find by email — the schema excludes memberPassword by default
+		await this.loginProtection.assertNotLocked(memberEmail, ipAddress);
+
+		// Find by email — the schema excludes memberPassword by default
 		// (select: false), so it has to be re-included explicitly. Using an
 		// inclusion projection here (as before) would drop every other field
 		// (memberEmail, memberPhone, timestamps, ...) that Member's GraphQL
@@ -72,28 +82,31 @@ export class MemberService {
 			.select('+memberPassword')
 			.exec();
 
-		// Same generic message for "no such user" and "wrong password" —
-		// distinguishing them lets an attacker enumerate registered emails.
-		const invalidCredentials = () =>
-			new BadRequestException('Invalid email or password');
+		// Always run a bcrypt.compare(), even for a nonexistent email — against
+		// a fixed dummy hash if there's no real one — so this branch takes the
+		// same time either way (see DUMMY_HASH above).
+		const isMatch = member
+			? await comparePassword(memberPassword, member.memberPassword)
+			: await comparePassword(memberPassword, await DUMMY_HASH);
 
-		if (!member) {
-			throw invalidCredentials();
+		if (!member || !isMatch) {
+			await this.loginProtection.recordFailure(memberEmail, ipAddress);
+			// Same message for "no such user" and "wrong password" — distinguishing
+			// them lets an attacker enumerate registered emails.
+			throw new BadRequestException('Invalid credentials');
 		}
+
+		// Correct password — this is the real owner, not a brute-forcer.
+		await this.loginProtection.recordSuccess(memberEmail, ipAddress);
+
 		if (member.memberStatus === MemberStatus.BLOCKED) {
 			throw new BadRequestException('This account has been blocked');
 		}
 		if (member.memberStatus === MemberStatus.DELETED) {
-			throw invalidCredentials();
+			throw new BadRequestException('Invalid credentials');
 		}
 
-		// 2. Verify the password
-		const isMatch = await comparePassword(memberPassword, member.memberPassword);
-		if (!isMatch) {
-			throw invalidCredentials();
-		}
-
-		// 3. Create the token — same toObject() + spread reasoning as signup()
+		// Create the token — same toObject() + spread reasoning as signup()
 		const accessToken = await this.authService.createToken(member);
 		return { ...member.toObject(), accessToken } as Member;
 	}

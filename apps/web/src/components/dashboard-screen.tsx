@@ -9,7 +9,14 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { useProfileImage } from "@/components/use-profile-image";
 import { useClinicProfile } from "@/components/clinic-profile-store";
 import { GET_MY_BOOKINGS, type BookingStatus, type MyBooking } from "@/lib/graphql/bookings";
-import { GET_CLINIC_BOOKINGS } from "@/lib/graphql/clinic-bookings";
+import {
+  CANCEL_BOOKING,
+  CONFIRM_BOOKING,
+  GET_CLINIC_BOOKINGS,
+  type ClinicBooking,
+  type MemberCountry,
+} from "@/lib/graphql/clinic-bookings";
+import type { MemberLang } from "@/lib/graphql/clinics";
 import { CONFIRM_COMPLETION } from "@/lib/graphql/payment";
 import { CREATE_REVIEW } from "@/lib/graphql/reviews";
 import { connectChatSocket, getMyMemberId } from "@/lib/chat/socket";
@@ -75,22 +82,27 @@ function formatBookingDate(value: string) {
   });
 }
 
-const initialRequests = [
-  {
-    id: 1,
-    patient: "Li Mei",
-    country: "🇨🇳",
-    detail: "Rhinoplasty · prefers Aug 12 · 中文",
-    avatar: "LM",
-  },
-  {
-    id: 2,
-    patient: "Yuki Tanaka",
-    country: "🇯🇵",
-    detail: "Double eyelid · prefers Sep 3 · 日本語",
-    avatar: "YT",
-  },
-];
+const countryFlags: Record<MemberCountry, string> = {
+  CHINA: "🇨🇳",
+  JAPAN: "🇯🇵",
+  USA: "🇺🇸",
+  VIETNAM: "🇻🇳",
+  THAILAND: "🇹🇭",
+  OTHER: "",
+};
+
+const langLabels: Record<MemberLang, string> = {
+  EN: "English",
+  ZH: "中文",
+  JA: "日本語",
+  KO: "한국어",
+};
+
+function initialsFor(nick: string) {
+  const parts = nick.trim().split(/\s+/);
+  const initials = parts.length > 1 ? parts[0][0] + parts[1][0] : nick.slice(0, 2);
+  return initials.toUpperCase();
+}
 
 function BookingSubmittedBanner() {
   const searchParams = useSearchParams();
@@ -581,71 +593,165 @@ function ReviewForm({
 }
 
 function ClinicRequests() {
-  const [requests, setRequests] = useState(initialRequests);
-  const [message, setMessage] = useState("");
+  // Only REQUESTED bookings — this is a preview widget on the Overview page,
+  // not the full booking-management surface (that's
+  // /dashboard/clinic/booking-requests, which already exists and shows every
+  // status with its own filters).
+  //
+  // Fetched unfiltered (same query+variables as ClinicStatCards, so Apollo
+  // shares the cache entry) and filtered to REQUESTED client-side — a
+  // server-side `status: "REQUESTED"` filter would leave a just-accepted
+  // booking stuck in this list, since Apollo updates the booking entity's
+  // status in the cache in place but doesn't re-run the server-side filter
+  // that produced this list's ID array.
+  const { data, loading } = useQuery(GET_CLINIC_BOOKINGS, {
+    variables: { input: { limit: 50 } },
+  });
+  const [confirmBooking, { loading: confirming }] = useMutation(CONFIRM_BOOKING);
+  const [cancelBooking, { loading: cancelling }] = useMutation(CANCEL_BOOKING);
+  const busy = confirming || cancelling;
 
-  const resolveRequest = (id: number, action: "accepted" | "declined") => {
-    const request = requests.find((item) => item.id === id);
-    if (!request) return;
-    setRequests((current) => current.filter((item) => item.id !== id));
-    setMessage(`${request.patient}’s request was ${action}.`);
+  const requests = (data?.getClinicBookings.list ?? []).filter(
+    (booking) => booking.bookingStatus === "REQUESTED",
+  );
+
+  const handleConfirm = async (booking: ClinicBooking) => {
+    const result = await Swal.fire({
+      icon: "question",
+      title: "Accept this booking?",
+      text: `${money.format(booking.procedure.procedurePriceMin)} will be locked as the confirmed procedure price.`,
+      showCancelButton: true,
+      confirmButtonColor: "#125453",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Confirm",
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await confirmBooking({ variables: { bookingId: booking._id } });
+      await Swal.fire({
+        icon: "success",
+        title: "Booking updated",
+        text: `${booking.patient.memberNick}'s booking is now confirmed.`,
+        confirmButtonColor: "#125453",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Couldn't confirm booking",
+        text: (err as Error).message,
+        confirmButtonColor: "#125453",
+      });
+    }
+  };
+
+  const handleDecline = async (booking: ClinicBooking) => {
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Decline this request?",
+      text: "The patient will be notified that the clinic declined the request.",
+      showCancelButton: true,
+      confirmButtonColor: "#125453",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Confirm",
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await cancelBooking({ variables: { bookingId: booking._id } });
+      await Swal.fire({
+        icon: "success",
+        title: "Booking updated",
+        text: `${booking.patient.memberNick}'s booking is now cancelled.`,
+        confirmButtonColor: "#125453",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Couldn't decline booking",
+        text: (err as Error).message,
+        confirmButtonColor: "#125453",
+      });
+    }
   };
 
   return (
     <section className="mt-9" id="requests">
-      <h2 className="mb-4 text-lg font-bold text-brand-ink">New booking requests</h2>
-
-      {message && (
-        <p
-          role="status"
-          className="mb-3 rounded-xl bg-brand-teal-100 px-4 py-3 text-sm font-medium text-brand-teal-700"
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-bold text-brand-ink">New booking requests</h2>
+        <Link
+          href="/dashboard/clinic/booking-requests"
+          className="text-sm font-semibold text-brand-teal-700 hover:underline"
         >
-          {message}
-        </p>
-      )}
-
-      <div className="max-h-[360px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
-        {requests.map((request) => (
-          <article
-            key={request.id}
-            className="flex flex-col gap-4 rounded-xl border border-brand-line p-4 transition hover:border-brand-teal-500 hover:shadow-md xl:flex-row xl:items-center"
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-4">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-brand-gold to-amber-700 text-xs font-bold text-white">
-                {request.avatar}
-              </span>
-              <div className="min-w-0">
-                <p className="font-bold text-brand-ink">
-                  🧑 Patient · {request.patient} · {request.country}
-                </p>
-                <p className="mt-1 truncate text-sm text-brand-muted">{request.detail}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => resolveRequest(request.id, "declined")}
-                className="min-h-11 rounded-xl border border-brand-line px-5 text-sm font-semibold text-brand-muted transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
-              >
-                Decline
-              </button>
-              <button
-                type="button"
-                onClick={() => resolveRequest(request.id, "accepted")}
-                className="min-h-11 rounded-xl bg-brand-teal-700 px-5 text-sm font-bold text-white transition hover:bg-brand-teal-900"
-              >
-                Accept &amp; confirm
-              </button>
-            </div>
-          </article>
-        ))}
-
-        {requests.length === 0 && (
-          <div className="rounded-xl border border-dashed border-brand-line px-5 py-10 text-center text-sm text-brand-muted">
-            All new booking requests have been reviewed.
-          </div>
-        )}
+          View all
+        </Link>
       </div>
+
+      {loading ? (
+        <div className="flex min-h-[120px] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-line border-t-brand-teal-700" />
+        </div>
+      ) : (
+        <div className="max-h-[360px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
+          {requests.map((request) => {
+            const flag = request.patient.memberCountry
+              ? countryFlags[request.patient.memberCountry]
+              : "";
+            const lang = langLabels[request.patient.memberLang];
+
+            return (
+              <article
+                key={request._id}
+                className="flex flex-col gap-4 rounded-xl border border-brand-line p-4 transition hover:border-brand-teal-500 hover:shadow-md xl:flex-row xl:items-center"
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-brand-gold to-amber-700 text-xs font-bold text-white">
+                    {initialsFor(request.patient.memberNick)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-bold text-brand-ink">
+                      🧑 Patient · {request.patient.memberNick} {flag}
+                    </p>
+                    <p className="mt-1 truncate text-sm text-brand-muted">
+                      {request.procedure.procedureName} · prefers{" "}
+                      {formatBookingDate(request.bookingPreferredDate)}
+                      {lang ? ` · ${lang}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handleDecline(request)}
+                    className="min-h-11 rounded-xl border border-brand-line px-5 text-sm font-semibold text-brand-muted transition hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Decline
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handleConfirm(request)}
+                    className="min-h-11 rounded-xl bg-brand-teal-700 px-5 text-sm font-bold text-white transition hover:bg-brand-teal-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Accept &amp; confirm
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+
+          {requests.length === 0 && (
+            <div className="rounded-xl border border-dashed border-brand-line px-5 py-10 text-center text-sm text-brand-muted">
+              All new booking requests have been reviewed.
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

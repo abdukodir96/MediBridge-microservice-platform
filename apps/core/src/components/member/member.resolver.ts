@@ -1,5 +1,6 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { MemberService } from './member.service';
 import { Member } from '../../libs/dto/member/member';
@@ -29,9 +30,17 @@ export class MemberResolver {
 
 	@Throttle(AUTH_THROTTLE)
 	@Mutation(() => Member)
-	public async login(@Args('input') input: LoginInput): Promise<Member> {
+	public async login(
+		@Args('input') input: LoginInput,
+		@Context() context: { req: Request },
+	): Promise<Member> {
 		console.log('Mutation: login');
-		return await this.memberService.login(input);
+		// x-forwarded-for is client-supplied and spoofable behind a proxy that
+		// doesn't overwrite it — fine here since the lockout only protects the
+		// account, not a resource an attacker gains by evading it (worst case
+		// they reset their own counter, no different from switching IPs for real).
+		const ip = (context.req.headers['x-forwarded-for'] as string) ?? context.req.ip ?? 'unknown';
+		return await this.memberService.login(input, ip);
 	}
 
 	@Query(() => Member)

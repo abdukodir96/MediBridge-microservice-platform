@@ -25,9 +25,11 @@ export class MemberController {
 
 	// TCP: login message from the Gateway
 	@MessagePattern({ cmd: 'member.login' })
-	public async login(@Payload() input: LoginInput): Promise<Member> {
+	public async login(
+		@Payload() payload: { input: LoginInput; ipAddress: string },
+	): Promise<Member> {
 		console.log('TCP: member.login');
-		return await this.memberService.login(input);
+		return await this.memberService.login(payload.input, payload.ipAddress);
 	}
 
 	@MessagePattern({ cmd: 'member.authenticate' })
