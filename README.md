@@ -230,16 +230,16 @@ carried over from `/clinics`.
   component — swapping the router wholesale there would silently 404 the
   dashboard redirects. Needs either two router instances per component or a
   small helper that only prefixes known in-scope paths.
-1. **`sitemap.ts`, `robots.ts`, JSON-LD structured data (`LocalBusiness`
-   /`MedicalOrganization` schema)** — none of this exists yet. Straightforward
-   with the SSR foundation now in place, just not built.
-2. **Deploy phase (domain, VPS/hosting, SSL, swap every test credential for
+1. **Deploy phase (domain, VPS/hosting, SSL, swap every test credential for
    real ones — Cloudinary, hCaptcha, Gemini)** — not started. Blocks and is
-   blocked by (3): search engines can't index what isn't live at a real
+   blocked by (2): search engines can't index what isn't live at a real
    domain.
-3. **Search console registration — Baidu Webmaster Tools, Naver Search
-   Advisor** (plus Google Search Console) — not started, depends on (2)
+2. **Search console registration — Baidu Webmaster Tools, Naver Search
+   Advisor** (plus Google Search Console) — not started, depends on (1)
    being done first.
+
+`sitemap.ts`/`robots.ts`/JSON-LD are now built (see below) — that closes out
+Phase 2 entirely; only the two items above remain.
 
 ### Content translation (clinic/procedure names & descriptions)
 
@@ -270,6 +270,39 @@ entity+locale, not once per page view.
 - **Source language is hardcoded to English** — there's no clinic-facing
   UI for entering content in another language, so there's nothing to
   detect.
+
+### Sitemap, robots.txt, structured data
+
+- **`app/robots.ts`** — allows everything except `/dashboard/`, `/admin/`,
+  `/booking/` (private or login-gated, not SEO targets), points crawlers at
+  the sitemap.
+- **`app/sitemap.ts`** — every static public path (`/`, `/clinics`, `/login`,
+  `/signup`) × all 4 locales, plus every VERIFIED clinic's profile page ×
+  all 4 locales, each with `alternates.languages` — Next.js's built-in way
+  to emit `hreflang` annotations directly in the sitemap XML (Google's
+  documented preferred method over per-page `<link rel="alternate">` tags
+  for a multi-page site), including `x-default` pointing at the unprefixed
+  English URL. Paginates through `getClinics` in batches of 50 (the
+  backend's `@Max(50)` cap) rather than assuming everything fits in one
+  request — correct at today's fixture size (27 clinics) and beyond it.
+  Confirmed live: 124 `<loc>` entries = (4 static + 27 clinics) × 4 locales,
+  each with all 4 `hreflang` alternates plus `x-default`.
+- **JSON-LD (`MedicalBusiness` schema)** on `/clinics/[id]` — `name`/
+  `description` reflect whatever this request's locale already resolved
+  them to (English or AI-translated), so the structured data always matches
+  what's actually displayed, not a separate/stale copy. Adds
+  `aggregateRating` (rating stars in Google search results, a real
+  click-through driver) when a clinic has reviews.
+  - **Real security fix during implementation**: `clinicDesc` is
+    clinic-owner-authored freeform text, and `JSON.stringify()` does *not*
+    escape `</script>` — embedding it unescaped inside
+    `dangerouslySetInnerHTML` would let a malicious clinic description break
+    out of the `<script>` tag and inject arbitrary HTML/JS into every
+    visitor's page (stored XSS). Fixed by escaping `<` to its Unicode form
+    before embedding — same JSON-LD, safe either way.
+- Not built: `BreadcrumbList` and `Organization`/`WebSite` structured data
+  (lower-value, explicitly deferred), and `changeFrequency`/`priority`
+  tuning beyond reasonable defaults.
 
 ### Deliberately not built
 

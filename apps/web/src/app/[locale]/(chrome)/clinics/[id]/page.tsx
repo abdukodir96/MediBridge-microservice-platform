@@ -5,8 +5,57 @@ import { getTranslations } from "next-intl/server";
 import { ClinicBookingCard } from "@/components/clinic-booking-card";
 import { ClinicComments } from "@/components/clinic-comments";
 import { ClinicProfileStats } from "@/components/clinic-profile-stats";
-import { fetchClinicProfile, type ClinicProcedure } from "@/lib/graphql/clinic-profile";
+import { fetchClinicProfile, type ClinicProcedure, type ClinicProfile } from "@/lib/graphql/clinic-profile";
 import { langLabel, titleCaseEnum } from "@/lib/clinic-format";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:4000";
+
+// schema.org structured data — lets Google show rating stars directly in
+// search results (a "rich snippet") instead of a plain blue link, which
+// meaningfully improves click-through. Reflects whatever this request's
+// locale already resolved clinicName/clinicDesc to (English or AI-translated
+// — see TranslationService), matching what the page actually displays.
+function ClinicJsonLd({
+	clinic,
+	clinicId,
+	locale,
+}: {
+	clinic: ClinicProfile;
+	clinicId: string;
+	locale: string;
+}) {
+	const data = {
+		"@context": "https://schema.org",
+		"@type": "MedicalBusiness",
+		name: clinic.clinicName,
+		description: clinic.clinicDesc,
+		address: {
+			"@type": "PostalAddress",
+			addressLocality: clinic.clinicAddress,
+			addressCountry: "KR",
+		},
+		...(clinic.clinicReviewCount > 0 && {
+			aggregateRating: {
+				"@type": "AggregateRating",
+				ratingValue: clinic.clinicRating,
+				reviewCount: clinic.clinicReviewCount,
+			},
+		}),
+		...(clinic.clinicImages[0] && { image: clinic.clinicImages[0] }),
+		medicalSpecialty: clinic.clinicSpecialties,
+		url: `${SITE_URL}${locale === "en" ? "" : `/${locale}`}/clinics/${clinicId}`,
+	};
+
+	// clinicName/clinicDesc are clinic-owner-authored freeform text, and
+	// JSON.stringify does NOT escape "</script>" — embedding it unescaped
+	// inside dangerouslySetInnerHTML would let a clinic owner break out of
+	// this <script> tag and inject arbitrary HTML/JS into every visitor's
+	// page. Escaping "<" as its unicode form neutralizes that while staying
+	// valid, semantically identical JSON-LD.
+	const json = JSON.stringify(data).replace(/</g, "\\u003c");
+
+	return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
+}
 
 // Only the "Verified" case has a translation (t("clinicProfile.verified"));
 // the other two badge variants stay English — same scope gap as the
@@ -52,6 +101,7 @@ export default async function ClinicProfilePage({
 
 	return (
 		<div className="flex min-h-screen flex-col bg-white">
+			<ClinicJsonLd clinic={clinic} clinicId={id} locale={locale} />
 			<section className="relative h-[300px] overflow-hidden bg-brand-teal-900 sm:h-[380px]">
 				<Image src={coverImage} alt="" fill priority sizes="100vw" className="object-cover object-center opacity-75" />
 				<div className="absolute inset-0 bg-linear-to-r from-brand-teal-900/80 via-brand-teal-700/35 to-brand-teal-900/55" />
