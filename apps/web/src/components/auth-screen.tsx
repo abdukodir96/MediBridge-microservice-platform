@@ -4,7 +4,9 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { gql } from "@apollo/client";
 import type { TypedDocumentNode } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import GoogleIcon from "@mui/icons-material/Google";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,7 +15,10 @@ type SignupRole = "PATIENT" | "CLINIC";
 type MemberType = "PATIENT" | "CLINIC" | "ADMIN";
 type AuthMember = { _id: string; memberEmail: string; memberNick: string; memberType: MemberType; memberImage?: string | null; accessToken: string };
 
-const LOGIN: TypedDocumentNode<{ login: AuthMember }, { input: { memberEmail: string; memberPassword: string } }> = gql`
+const LOGIN: TypedDocumentNode<
+  { login: AuthMember },
+  { input: { memberEmail: string; memberPassword: string; captchaToken?: string } }
+> = gql`
   mutation Login($input: LoginInput!) {
     login(input: $input) { _id memberEmail memberNick memberType memberImage accessToken }
   }
@@ -39,6 +44,8 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
   const [formError, setFormError] = useState("");
+  const [needsCaptcha, setNeedsCaptcha] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [login, loginState] = useMutation(LOGIN);
   const [signup, signupState] = useMutation(SIGNUP);
   const loading = loginState.loading || signupState.loading;
@@ -91,10 +98,30 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
         const { data } = await signup({ variables: { input: { memberEmail: email, memberPassword: password, memberNick: nickname, memberPhone: phone, memberType: role, memberLang: "EN" } } });
         if (data) finishAuth(data.signup);
       } else {
-        const { data } = await login({ variables: { input: { memberEmail: email, memberPassword: password } } });
+        const { data } = await login({
+          variables: {
+            input: {
+              memberEmail: email,
+              memberPassword: password,
+              captchaToken: captchaToken ?? undefined,
+            },
+          },
+        });
         if (data) finishAuth(data.login);
       }
-    } catch { /* Apollo error renders below. */ }
+    } catch (err) {
+      // Apollo Client 4 dropped `graphQLErrors` off a generic ApolloError —
+      // GraphQL-layer errors now arrive as a CombinedGraphQLErrors instance
+      // with an `errors` array, each carrying its own `extensions`.
+      if (CombinedGraphQLErrors.is(err)) {
+        const requiresCaptcha = err.errors[0]?.extensions?.requiresCaptcha === true;
+        if (requiresCaptcha) {
+          setNeedsCaptcha(true);
+          setCaptchaToken(null); // stale token (if any) is no longer valid
+        }
+      }
+      /* Apollo error message renders below via loginState.error/signupState.error. */
+    }
   };
 
   return <main className="grid min-h-screen overflow-hidden bg-white lg:relative lg:block lg:h-screen">
@@ -155,8 +182,17 @@ export function AuthScreen({ mode }: { mode: "login" | "signup" }) {
         <AuthField label="Password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete={isSignup ? "off" : "current-password"} type="password" minLength={6} />
         {isSignup && <AuthField label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} placeholder="••••••••" autoComplete="off" type="password" minLength={6} />}
         {!isSignup && <div className="flex items-center justify-between text-xs text-brand-muted"><label className="flex items-center gap-2"><input type="checkbox" className="accent-brand-teal-700" />Remember me</label><button type="button" className="font-semibold text-brand-teal-700 hover:underline">Forgot password?</button></div>}
+        {!isSignup && needsCaptcha && (
+          <div>
+            <HCaptcha
+              sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY!}
+              onVerify={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken(null)}
+            />
+          </div>
+        )}
         {(formError || error) && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{formError || error?.message}</p>}
-        <button disabled={loading} className="min-h-[52px] w-full rounded-xl bg-brand-teal-700 text-sm font-bold text-white transition hover:bg-brand-teal-900 disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Please wait..." : isSignup ? "Create account" : "Log in"}</button>
+        <button disabled={loading || (needsCaptcha && !captchaToken)} className="min-h-[52px] w-full rounded-xl bg-brand-teal-700 text-sm font-bold text-white transition hover:bg-brand-teal-900 disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Please wait..." : isSignup ? "Create account" : "Log in"}</button>
       </form>
       <div className="my-6 flex items-center gap-3 text-xs text-brand-muted before:h-px before:flex-1 before:bg-brand-line after:h-px after:flex-1 after:bg-brand-line"><span>or continue with</span></div>
       <button type="button" className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-brand-line text-sm font-semibold text-brand-ink transition hover:border-brand-teal-500 hover:bg-brand-cream/60">
