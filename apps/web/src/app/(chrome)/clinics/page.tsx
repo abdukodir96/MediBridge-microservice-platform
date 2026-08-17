@@ -58,6 +58,7 @@ function ClinicsPageContent() {
       input: {
         specialties: backendSpecialties.length ? backendSpecialties : undefined,
         langs: backendLangs.length ? backendLangs : undefined,
+        locations: selectedLocations.length ? selectedLocations : undefined,
         priceMin: minPrice > 0 ? minPrice : undefined,
         priceMax: maxPrice < 8000 ? maxPrice : undefined,
         sort: toBackendSort(uiSort),

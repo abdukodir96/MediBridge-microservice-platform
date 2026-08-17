@@ -40,6 +40,10 @@ export class ClinicInput {
 	@IsOptional()
 	@Field(() => [MemberLang], { nullable: true })
 	clinicLangs?: MemberLang[];
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	clinicLicenses?: string[];
 }
 
 // Search / filter (for patients)
@@ -57,6 +61,11 @@ export class ClinicsInquiry {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	text?: string; // search by name
+
+	@IsOptional()
+	@IsArray()
+	@Field(() => [String], { nullable: true })
+	locations?: string[];
 
 	@IsOptional()
 	@Min(0)

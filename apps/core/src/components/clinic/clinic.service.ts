@@ -57,6 +57,14 @@ export class ClinicService {
 		ownerId: ObjectId,
 		input: ClinicInput,
 	): Promise<Clinic> {
+		// One clinic per owner — enforced at creation so the ambiguity (which
+		// one does getMyClinic return?) can't arise in the first place, rather
+		// than picking a tiebreaker after the fact.
+		const existing = await this.clinicModel.findOne({ clinicOwnerId: ownerId }).exec();
+		if (existing) {
+			throw new BadRequestException('You already have a clinic registered');
+		}
+
 		try {
 			const result = await this.clinicModel.create({
 				...input,
@@ -105,6 +113,7 @@ export class ClinicService {
 			specialties,
 			langs,
 			text,
+			locations,
 			priceMin,
 			priceMax,
 			sort = ClinicSort.TOP_RATED,
@@ -119,6 +128,12 @@ export class ClinicService {
 		if (specialties?.length) match.clinicSpecialties = { $in: specialties };
 		if (langs?.length) match.clinicLangs = { $in: langs };
 		if (text) match.clinicName = { $regex: escapeRegex(text), $options: 'i' };
+		if (locations?.length) {
+			// OR across the selected districts — a clinic matches if its address
+			// contains any one of them.
+			const pattern = locations.map(escapeRegex).join('|');
+			match.clinicAddress = { $regex: pattern, $options: 'i' };
+		}
 
 		const skip = (page - 1) * limit;
 

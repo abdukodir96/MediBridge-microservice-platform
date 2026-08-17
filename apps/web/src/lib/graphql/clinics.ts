@@ -35,6 +35,7 @@ export interface ClinicsInquiry {
 	specialties?: ClinicSpecialty[];
 	langs?: MemberLang[];
 	text?: string;
+	locations?: string[];
 	priceMin?: number;
 	priceMax?: number;
 	sort?: ClinicSort;
