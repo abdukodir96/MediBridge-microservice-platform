@@ -67,12 +67,27 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+      core:
+        condition: service_started
+      ai:
+        condition: service_started
     environment:
       PORT: 3005
       MONGO_URI: mongodb://mongo:27017/medibridge-chat
       JWT_SECRET: ${JWT_SECRET}
+      CORE_TCP_HOST: core
+      CORE_TCP_PORT: 3002
+      AI_SERVICE_URL: http://ai:8000
     ports:
       - "3005:3005"
+
+  ai:
+    build: ./apps/ai
+    environment:
+      PORT: 8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8000:8000"
 
 volumes:
   mongo_data:

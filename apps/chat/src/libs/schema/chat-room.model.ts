@@ -26,6 +26,23 @@ const ChatRoomSchema = new Schema(
       type: String,
       default: null,
     },
+    // Denormalized from Core's Member.memberLang at room-creation time (not
+    // live-queried per message) — a deliberate staleness-for-simplicity
+    // trade-off: if a member changes their language later, rooms opened
+    // before that keep translating into the old one. No roomAdminLang
+    // field exists — ADMIN_CLINIC is a shared inbox any admin can post in
+    // (see assertRoomAccess), so there's no single admin to freeze a
+    // language for; admin-authored messages are assumed English, the
+    // panel's working language, and only translated one-way into
+    // roomClinicOwnerLang. See ChatService.resolveTranslationTarget.
+    roomPatientLang: {
+      type: String,
+      default: null,
+    },
+    roomClinicOwnerLang: {
+      type: String,
+      default: null,
+    },
     roomLastMessageAt: {
       type: Date,
       default: null, // for sorting the room list

@@ -89,8 +89,9 @@ export class ChatGateway implements OnGatewayConnection {
       return { status: 'error', message: 'Invalid message text' };
     }
 
+    let room: Awaited<ReturnType<ChatService['assertRoomAccess']>>;
     try {
-      await this.chatService.assertRoomAccess(
+      room = await this.chatService.assertRoomAccess(
         data.roomId,
         client.data.memberId,
         client.data.memberType,
@@ -108,6 +109,23 @@ export class ChatGateway implements OnGatewayConnection {
     // REAL-TIME: broadcast to everyone in the room (including the sender,
     // as a delivery confirmation)
     this.server.to(data.roomId).emit('newMessage', message);
+
+    // Translation is best-effort and runs in the background — the message
+    // above is already sent and visible. Deliberately not awaited: a slow
+    // or unreachable AI service must never add latency to sending a
+    // message. If it succeeds, a follow-up event patches it in place.
+    this.chatService
+      .translateMessage(room, message)
+      .then((updated) => {
+        if (updated) {
+          this.server.to(data.roomId).emit('messageTranslated', updated);
+        }
+      })
+      .catch(() => {
+        // translateMessage already swallows its own errors — this guard
+        // just ensures a future change there can't produce an unhandled
+        // rejection in the gateway.
+      });
 
     return { status: 'sent', messageId: String(message._id) };
   }
