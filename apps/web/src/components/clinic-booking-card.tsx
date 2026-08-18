@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import { useRouter as usePlainRouter } from "@/lib/plain-navigation";
 import Swal from "sweetalert2";
+import { connectChatSocket, getMyMemberId } from "@/lib/chat/socket";
 
 const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -15,18 +17,22 @@ export type BookingProcedureOption = {
 
 export function ClinicBookingCard({
   clinicSlug,
+  clinicOwnerId,
   clinicName,
   startingPrice,
   procedures,
 }: {
   clinicSlug: string;
+  clinicOwnerId: string;
   clinicName: string;
   startingPrice: string;
   procedures: BookingProcedureOption[];
 }) {
   const t = useTranslations("clinicProfile.bookingCard");
-  const router = useRouter();
+  const router = useRouter(); // in-scope targets only: /login, /booking/new
+  const plainRouter = usePlainRouter(); // out-of-scope target: /dashboard/messages
   const [procedureId, setProcedureId] = useState(procedures[0]?._id ?? "");
+  const [startingChat, setStartingChat] = useState(false);
   const [date, setDate] = useState("2026-08-12");
   const [procedureOpen, setProcedureOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -73,12 +79,26 @@ export function ClinicBookingCard({
 
   const startChat = async () => {
     if (!(await requireLogin())) return;
-    await Swal.fire({
-      icon: "success",
-      title: "Chat request sent",
-      text: `${clinicName} will be notified of your request.`,
-      confirmButtonColor: "#125453",
-    });
+    setStartingChat(true);
+    const socket = connectChatSocket();
+    socket.emit(
+      "openRoom",
+      { patientId: getMyMemberId(), clinicOwnerId },
+      (res: { status: string; roomId?: string; message?: string }) => {
+        socket.disconnect(); // one-off connection — the Messages page opens its own
+        setStartingChat(false);
+        if (res.status === "roomOpened" && res.roomId) {
+          plainRouter.push(`/dashboard/messages?room=${res.roomId}`);
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Couldn't open chat",
+            text: res.message ?? "Please try again.",
+            confirmButtonColor: "#125453",
+          });
+        }
+      },
+    );
   };
 
   return (
@@ -197,8 +217,13 @@ export function ClinicBookingCard({
       <button type="button" onClick={() => void requestBooking()} className="mt-7 min-h-14 w-full rounded-xl bg-brand-teal-700 px-6 text-base font-bold text-white transition hover:bg-brand-teal-900">
         {t("requestButton")}
       </button>
-      <button type="button" onClick={() => void startChat()} className="mt-4 min-h-14 w-full rounded-xl border border-brand-line bg-white px-6 text-base font-bold text-brand-teal-900 transition hover:border-brand-teal-500 hover:bg-brand-cream">
-        💬 {t("chatButton")}
+      <button
+        type="button"
+        onClick={() => void startChat()}
+        disabled={startingChat}
+        className="mt-4 min-h-14 w-full rounded-xl border border-brand-line bg-white px-6 text-base font-bold text-brand-teal-900 transition hover:border-brand-teal-500 hover:bg-brand-cream disabled:opacity-60"
+      >
+        💬 {startingChat ? "Opening…" : t("chatButton")}
       </button>
 
       <div className="mt-7 rounded-xl bg-brand-cream/75 p-5">

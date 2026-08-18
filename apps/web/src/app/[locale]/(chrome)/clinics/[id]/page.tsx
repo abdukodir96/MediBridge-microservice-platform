@@ -178,6 +178,7 @@ export default async function ClinicProfilePage({
 				<div className="order-first lg:order-none">
 					<ClinicBookingCard
 						clinicSlug={id}
+						clinicOwnerId={clinic.clinicOwnerId}
 						clinicName={clinic.clinicName}
 						startingPrice={startingPrice}
 						procedures={procedures.map((p) => ({

@@ -1,6 +1,7 @@
 import type { ClinicSpecialty, MemberLang } from "@/lib/graphql/clinics";
 
 export interface ClinicProfile {
+	clinicOwnerId: string;
 	clinicName: string;
 	clinicDesc: string;
 	clinicAddress: string;
@@ -25,6 +26,7 @@ export interface ClinicProcedure {
 const GET_CLINIC_PROFILE_QUERY = `
 	query GetClinicProfile($clinicId: String!, $locale: String) {
 		getClinic(clinicId: $clinicId, locale: $locale) {
+			clinicOwnerId
 			clinicName
 			clinicDesc
 			clinicAddress
